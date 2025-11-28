@@ -82,3 +82,6 @@ backend/media/documents/*.zip
 
 # Test outputs
 backend/tools/test_output/
+
+# Collected static files (generated)
+backend/staticfiles/
