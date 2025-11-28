@@ -1,4 +1,10 @@
 {
+  "build": {
+    "builder": "nixpacks"
+  },
+  "startCommand": "sh start.sh"
+}
+{
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS"
