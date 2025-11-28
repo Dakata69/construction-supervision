@@ -1,0 +1,105 @@
+/* Mobile responsiveness improvements */
+
+/* Make tables scrollable on mobile */
+@media (max-width: 768px) {
+  .ant-table-wrapper {
+    overflow-x: auto;
+  }
+  
+  /* Adjust card padding on mobile */
+  .ant-card-body {
+    padding: 16px 12px;
+  }
+  
+  /* Stack form items better on mobile */
+  .ant-form-item {
+    margin-bottom: 16px;
+  }
+  
+  /* Make buttons full width on mobile */
+  .ant-btn-block {
+    width: 100% !important;
+  }
+  
+  /* Reduce font sizes slightly on mobile */
+  .ant-card-head-title {
+    font-size: 16px !important;
+  }
+  
+  /* Make modals fit mobile screens */
+  .ant-modal {
+    max-width: calc(100vw - 32px);
+    margin: 16px auto;
+  }
+  
+  .ant-modal-body {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+  }
+  
+  /* Improve header layout on mobile */
+  .ant-layout-header {
+    height: auto;
+    min-height: 64px;
+    line-height: normal;
+  }
+  
+  /* Make menu horizontal scroll on mobile */
+  .ant-menu-horizontal {
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  
+  /* Adjust spacing for mobile */
+  .ant-space {
+    gap: 8px !important;
+  }
+  
+  /* Make input fields better on mobile */
+  .ant-input,
+  .ant-input-number,
+  .ant-picker {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  /* Improve document list on mobile */
+  .ant-list-item {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+  
+  .ant-list-item-meta {
+    width: 100%;
+  }
+  
+  .ant-list-item-action {
+    margin-left: 0 !important;
+    margin-top: 8px;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .ant-card-body {
+    padding: 20px;
+  }
+}
+
+/* Ensure images don't overflow */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Touch-friendly button sizing */
+@media (hover: none) and (pointer: coarse) {
+  .ant-btn {
+    min-height: 44px;
+    padding: 8px 20px;
+  }
+  
+  .ant-switch {
+    min-width: 44px;
+    min-height: 22px;
+  }
+}

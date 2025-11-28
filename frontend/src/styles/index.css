@@ -1,0 +1,383 @@
+/* frontend/src/styles/index.css */
+:root {
+  --primary-color: #1890ff;
+  --success-color: #52c41a;
+  --warning-color: #faad14;
+  --error-color: #ff4d4f;
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --border-radius: 6px;
+  --transition-duration: 0.3s;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f0f2f5;
+}
+
+/* Animated skyline background */
+.background-city-wrapper {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Stars layer */
+.background-stars-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.65;
+  animation: fadeStars 1.2s ease-in;
+}
+.stars-svg { width: 2000px; height: 600px; }
+.star { fill: #fff; animation: twinkle 4.5s ease-in-out infinite; opacity: 0.85; }
+@keyframes twinkle {
+  0%, 20% { opacity: 0.2; }
+  40% { opacity: 0.9; }
+  60% { opacity: 0.35; }
+  80% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+@keyframes fadeStars { from { opacity: 0; } to { opacity: 0.65; } }
+
+/* Day/Night immediate mode */
+.background-day-night {
+  position: absolute;
+  inset: 0;
+  transition: background 1.2s ease-in-out, opacity 0.8s ease-in-out;
+  mix-blend-mode: multiply;
+  opacity: 0.7;
+}
+.background-day-night.day { 
+  background: linear-gradient(180deg, #dbe9ff 0%, #b7d4ff 45%, #8cb5e8 80%, #6fa0d9 100%);
+}
+.background-day-night.night { 
+  background: linear-gradient(180deg, #1b2b3d 0%, #253c56 45%, #1d3149 80%, #142234 100%);
+}
+
+/* Celestial body */
+.celestial-container { position: absolute; top: 40px; left: 0; right: 0; height: 120px; pointer-events: none; }
+.celestial { width: 80px; height: 80px; border-radius: 50%; position: absolute; top: 0; transform: translateX(0); transition: transform 1.6s cubic-bezier(.4,.04,.2,1), background 1.2s; box-shadow: 0 0 20px rgba(255,255,255,0.4); }
+.day .celestial { background: radial-gradient(circle at 30% 30%, #fff79a 0%, #ffcc33 60%, #e6a800 100%); transform: translateX(8%); }
+.night .celestial { background: radial-gradient(circle at 35% 35%, #fff 0%, #d7d9ff 55%, #9aa0b8 100%); transform: translateX(82%); box-shadow: 0 0 24px rgba(255,255,255,0.6); }
+
+.background-city-layer {
+  position: absolute;
+  bottom: 0;
+  width: 200%; /* two identical sequences for seamless loop */
+  display: flex;
+  align-items: flex-end;
+  opacity: 0.5;
+}
+
+.background-city-sequence {
+  display: flex;
+  align-items: flex-end;
+}
+
+.background-city-layer svg {
+  display: block;
+  height: 180px;
+}
+
+.city-layer-far { animation: moveLeftSeamless 120s linear infinite; filter: blur(1px); opacity: 0.2; }
+.city-layer-mid { animation: moveLeftSeamless 90s linear infinite; opacity: 0.3; }
+.city-layer-near { animation: moveLeftSeamless 60s linear infinite; opacity: 0.4; }
+
+@keyframes moveLeftSeamless {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .city-layer-far,
+  .city-layer-mid,
+  .city-layer-near { animation: none; }
+}
+
+/* removed long cycle animation */
+
+/* Window lights flicker (night only visible) */
+.window-light { animation: blink 5s ease-in-out infinite; opacity: 0; }
+.window-light.dim { opacity: 0; }
+.window-light.bright { opacity: 0; }
+.background-city-wrapper.night .window-light.dim { opacity: 0.25; }
+.background-city-wrapper.night .window-light.bright { opacity: 0.9; }
+
+@keyframes blink {
+  0%, 20% { opacity: 0; }
+  21%, 22% { opacity: 0.9; }
+  50% { opacity: 0.4; }
+  70% { opacity: 0.85; }
+  90%, 100% { opacity: 0; }
+}
+
+/* Cranes */
+.background-cranes-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  width: 300%;
+  animation: moveLeft 160s linear infinite;
+  display: flex;
+  align-items: flex-start;
+  opacity: 0.35; /* always visible baseline */
+  mix-blend-mode: normal;
+  animation-name: moveLeft, cranePulse;
+  animation-duration: 160s, 40s;
+  animation-iteration-count: infinite, infinite;
+  animation-timing-function: linear, ease-in-out;
+}
+
+@keyframes cranePulse {
+  0% { opacity: 0.35; }
+  20% { opacity: 0.5; }
+  40% { opacity: 0.3; }
+  60% { opacity: 0.55; }
+  80% { opacity: 0.32; }
+  100% { opacity: 0.35; }
+}
+
+.crane .crane-hook {
+  animation: hookSwing 6s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+@keyframes hookSwing {
+  0% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+  100% { transform: rotate(-6deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .background-cranes-layer { animation: none; opacity: 0.35; }
+  .crane .crane-hook { animation: none; }
+}
+
+/* Subtle gradient overlay to improve contrast */
+.background-city-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(240,242,245,1) 0%, rgba(240,242,245,0.85) 35%, rgba(240,242,245,0.5) 70%, rgba(240,242,245,0.2) 100%);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1; /* above background */
+}
+
+.ant-layout {
+  background: #fff !important;
+}
+
+.ant-layout-header {
+  background: #fff !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  transition: box-shadow var(--transition-duration);
+}
+
+.ant-menu-horizontal {
+  border-bottom: none !important;
+}
+
+.ant-card {
+  transition: all var(--transition-duration);
+}
+
+.ant-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.page-container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  padding: 24px;
+}
+
+.project-card {
+  cursor: pointer;
+  transition: all var(--transition-duration);
+}
+
+.project-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.project-card .ant-card-cover img {
+  transition: transform var(--transition-duration);
+}
+
+.project-card:hover .ant-card-cover img {
+  transform: scale(1.05);
+}
+
+.section-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1f1f1f;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+/* Interactive text utility */
+.interactive-text {
+  position: relative;
+  display: inline-block;
+  transition: transform .35s cubic-bezier(.25,.8,.25,1), color .35s, text-shadow .35s;
+  cursor: default;
+}
+.interactive-text::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: -6px;
+  height: 3px;
+  width: 0;
+  background: linear-gradient(135deg,#667eea,#764ba2);
+  border-radius: 2px;
+  transition: width .4s cubic-bezier(.25,.8,.25,1);
+  opacity: .85;
+}
+.interactive-text:hover,
+.interactive-text:focus-visible {
+  transform: translateY(-2px) scale(1.02);
+  text-shadow: 0 4px 14px rgba(0,0,0,0.25);
+}
+.interactive-text:hover::after,
+.interactive-text:focus-visible::after { width: 100%; }
+.interactive-text:active { transform: translateY(0) scale(0.99); }
+
+/* Dim text when animated background active */
+.background-active-dim { opacity: var(--text-dim-opacity, .88); transition: opacity .35s ease; }
+
+/* Missing placeholder highlight */
+.missing-field .ant-input,
+.missing-field .ant-picker,
+.missing-field textarea {
+  background-color: #fffbe6 !important;
+  border-color: var(--warning-color) !important;
+}
+
+/* Dark theme for act cards */
+.act-cards.dark .ant-card {
+  background: #1f1f1f !important;
+  color: #f0f0f0 !important;
+  border-color: #303030 !important;
+}
+.act-cards.dark .ant-card .ant-card-head { background: #141414 !important; }
+.act-cards.dark .ant-card .ant-card-head-title { color: #fff !important; }
+.act-cards.dark .ant-card .ant-divider { border-color: #303030 !important; }
+.act-cards.dark .ant-form-item-label > label { color: #d9d9d9 !important; }
+.act-cards.dark .ant-input,
+.act-cards.dark .ant-picker,
+.act-cards.dark textarea,
+.act-cards.dark .ant-select-selector {
+  background: #2a2a2a !important;
+  color: #f0f0f0 !important;
+  border-color: #444 !important;
+}
+.act-cards.dark .ant-input:hover,
+.act-cards.dark .ant-picker:hover,
+.act-cards.dark textarea:hover,
+.act-cards.dark .ant-select-selector:hover { border-color: #666 !important; }
+.act-cards.dark .ant-select-arrow { color: #f0f0f0 !important; }
+.act-cards.dark .missing-field .ant-input,
+.act-cards.dark .missing-field .ant-picker,
+.act-cards.dark .missing-field textarea {
+  background-color: #3a3214 !important;
+  border-color: #faad14 !important;
+}
+
+/* Dark theme dropdown (rendered in body, not inside .act-cards) */
+body:has(.act-cards.dark) .ant-select-dropdown {
+  background: #2a2a2a !important;
+  border-color: #444 !important;
+}
+body:has(.act-cards.dark) .ant-select-item {
+  color: #f0f0f0 !important;
+}
+body:has(.act-cards.dark) .ant-select-item-option-selected {
+  background: #1890ff !important;
+  color: #fff !important;
+}
+body:has(.act-cards.dark) .ant-select-item-option-active {
+  background: #3a3a3a !important;
+}
+
+/* Dark theme for DatePicker dropdown */
+body:has(.act-cards.dark) .ant-picker-dropdown {
+  background: #2a2a2a !important;
+}
+body:has(.act-cards.dark) .ant-picker-panel-container {
+  background: #2a2a2a !important;
+  border-color: #444 !important;
+}
+body:has(.act-cards.dark) .ant-picker-header,
+body:has(.act-cards.dark) .ant-picker-content,
+body:has(.act-cards.dark) .ant-picker-footer {
+  background: #2a2a2a !important;
+  color: #f0f0f0 !important;
+}
+body:has(.act-cards.dark) .ant-picker-header-view button {
+  color: #f0f0f0 !important;
+}
+body:has(.act-cards.dark) .ant-picker-cell {
+  color: #f0f0f0 !important;
+}
+body:has(.act-cards.dark) .ant-picker-cell-in-view {
+  color: #f0f0f0 !important;
+}
+body:has(.act-cards.dark) .ant-picker-cell:hover:not(.ant-picker-cell-selected):not(.ant-picker-cell-disabled) .ant-picker-cell-inner {
+  background: #3a3a3a !important;
+}
+body:has(.act-cards.dark) .ant-picker-cell-selected .ant-picker-cell-inner {
+  background: #1890ff !important;
+}
+body:has(.act-cards.dark) .ant-picker-cell-today .ant-picker-cell-inner::before {
+  border-color: #1890ff !important;
+}
+body:has(.act-cards.dark) .ant-picker-footer {
+  border-top-color: #444 !important;
+}
+body:has(.act-cards.dark) .ant-picker-today-btn {
+  color: #1890ff !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interactive-text { transition: none; }
+  .interactive-text:hover, .interactive-text:focus-visible { transform: none; }
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .page-container {
+    padding: 16px;
+  }
+}

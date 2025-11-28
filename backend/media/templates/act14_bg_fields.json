@@ -1,0 +1,27 @@
+{
+  "grid": { "enabled": false, "step": 25 },
+  "debug_names": false,
+  "pages": [
+    {
+      "fields": [
+        { "name": "project_name", "label": "Строеж", "x": 150, "y": 750, "size": 12, "max_width": 380 },
+        { "name": "project_location", "label": "Местоположение", "x": 150, "y": 730, "size": 12, "max_width": 380 },
+        { "name": "act_date", "label": "Дата", "x": 450, "y": 750, "size": 12 },
+
+        { "name": "permit_number", "label": "Разрешение №", "x": 150, "y": 700, "size": 11, "max_width": 150 },
+        { "name": "permit_date", "label": "Дата на разрешение", "x": 320, "y": 700, "size": 11 },
+
+        { "name": "client_name", "label": "Възложител", "x": 150, "y": 670, "size": 11, "max_width": 380 },
+        { "name": "consultant_name", "label": "Консултант", "x": 150, "y": 650, "size": 11, "max_width": 380 },
+        { "name": "designer_name", "label": "Проектант", "x": 150, "y": 630, "size": 11, "max_width": 380 },
+        { "name": "contractor_name", "label": "Изпълнител", "x": 150, "y": 610, "size": 11, "max_width": 380 },
+        { "name": "supervisor_name", "label": "Надзор", "x": 150, "y": 590, "size": 11, "max_width": 380 },
+
+        { "name": "inspection_findings", "label": "Констатации", "x": 150, "y": 550, "size": 11, "max_width": 420, "leading": 14 },
+        { "name": "documentation", "label": "Документация", "x": 150, "y": 480, "size": 11, "max_width": 420, "leading": 14 },
+        { "name": "conclusion", "label": "Заключение", "x": 150, "y": 410, "size": 11, "max_width": 420, "leading": 14 },
+        { "name": "notes", "label": "Забележки", "x": 150, "y": 340, "size": 11, "max_width": 420, "leading": 14 }
+      ]
+    }
+  ]
+}

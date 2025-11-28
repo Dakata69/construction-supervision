@@ -1,0 +1,19 @@
+{
+  "project_name": "Test Act 7 Auto",
+  "project_location": "София",
+  "client_name": "",
+  "contractor_name": "Фирма Изпълнител ООД",
+  "act_date": "14.11.2025",
+  "act_number": "Акт-7-Тест",
+  "representative_builder": "Иван Иванов",
+  "representative_supervision": "инж. Петров",
+  "representative_designer": "арх. Георгиева",
+  "signature_builder": "........................",
+  "signature_supervision": "........................",
+  "signature_designer": "........................",
+  "level_from": "-1.55",
+  "level_to": "-1.05",
+  "work_description": "Първа стъпка на фундаментна гредоскара",
+  "concrete_class": "C20/25 (B25)",
+  "concrete_work": "Бетониране на конструктивни елементи"
+}

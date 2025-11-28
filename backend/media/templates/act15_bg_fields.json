@@ -1,0 +1,27 @@
+{
+  "grid": { "enabled": false, "step": 25 },
+  "debug_names": false,
+  "pages": [
+    {
+      "fields": [
+        { "name": "project_name", "label": "Строеж", "x": 150, "y": 750, "size": 12, "max_width": 380 },
+        { "name": "project_location", "label": "Местоположение", "x": 150, "y": 730, "size": 12, "max_width": 380 },
+        { "name": "act_date", "label": "Дата", "x": 450, "y": 750, "size": 12 },
+
+        { "name": "client_name", "label": "Възложител", "x": 150, "y": 700, "size": 11, "max_width": 380 },
+        { "name": "contractor_name", "label": "Строител", "x": 150, "y": 680, "size": 11, "max_width": 380 },
+        { "name": "tech_supervisor_name", "label": "Тех. ръководител", "x": 150, "y": 660, "size": 11, "max_width": 380 },
+        { "name": "supervisor_name", "label": "Надзор", "x": 150, "y": 640, "size": 11, "max_width": 380 },
+
+        { "name": "start_date", "label": "Начало", "x": 150, "y": 610, "size": 11 },
+        { "name": "end_date", "label": "Край", "x": 230, "y": 610, "size": 11 },
+
+        { "name": "execution_details", "label": "Обстоятелства по изпълнението", "x": 150, "y": 570, "size": 11, "max_width": 420, "leading": 14 },
+        { "name": "documentation", "label": "Документация", "x": 150, "y": 500, "size": 11, "max_width": 420, "leading": 14 },
+        { "name": "deviations", "label": "Отклонения", "x": 150, "y": 430, "size": 11, "max_width": 420, "leading": 14 },
+        { "name": "conclusion", "label": "Заключение", "x": 150, "y": 360, "size": 11, "max_width": 420, "leading": 14 },
+        { "name": "notes", "label": "Забележки", "x": 150, "y": 290, "size": 11, "max_width": 420, "leading": 14 }
+      ]
+    }
+  ]
+}
