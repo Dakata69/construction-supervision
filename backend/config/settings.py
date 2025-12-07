@@ -17,6 +17,8 @@ if os.environ.get('VERCEL_URL'):
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://construction-supervision-rosy.vercel.app",
+    "https://construction-supervision-htsbz5u7d-dakata69s-projects.vercel.app",
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
