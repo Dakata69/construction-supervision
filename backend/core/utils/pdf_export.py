@@ -1,5 +1,9 @@
 import sys
-import pythoncom
+
+# pythoncom is Windows-only; only import on Windows
+if sys.platform == 'win32':
+    import pythoncom
+
 from docx2pdf import convert
 
 def convert_to_pdf(docx_path, pdf_path):
