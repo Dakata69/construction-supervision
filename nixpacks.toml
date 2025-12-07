@@ -1,18 +1,11 @@
-providers = ["python"]
-
-[phases.setup]
-nixPkgs = ["python311"]
-
-[phases.install]
-cmds = [
-  "pip install --upgrade pip",
-  "pip install --no-cache-dir -r backend/requirements.txt"
-]
-
-[phases.build]
-cmds = [
-  "python backend/manage.py collectstatic --noinput"
-]
+[build]
+cmd = "python backend/manage.py collectstatic --noinput"
 
 [start]
-cmd = "python backend/manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 3"
+cmd = "python backend/manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 3"
+
+[phases.setup]
+nixPkgs = ["python311", "postgresql"]
+
+[phases.install]
+cmds = ["pip install --upgrade pip", "pip install -r backend/requirements.txt"]
