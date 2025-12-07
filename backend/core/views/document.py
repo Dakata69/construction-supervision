@@ -27,27 +27,22 @@ def generate_document_view(request):
     if not template_name:
         return Response({'error': 'template_name is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Determine output names/paths
     doc_name, ext = os.path.splitext(template_name)
     generated_dir = os.path.join(settings.MEDIA_ROOT, 'generated')
     os.makedirs(generated_dir, exist_ok=True)
 
-    # Build absolute base URL
     request_host = request.get_host()
     scheme = 'https' if request.is_secure() else 'http'
     base_url = f'{scheme}://{request_host}'
 
-    # Generate DOCX only
     docx_filename = f'{doc_name}.docx'
     docx_path = os.path.join(generated_dir, docx_filename)
 
-    # Generate DOCX with error handling
     try:
         generate_document(template_name, context, docx_path)
     except Exception as e:
         return Response({'error': f'DOCX generation failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # Create Document record in database with relative path
     doc_title = context.get('project_name', doc_name)
     document = Document.objects.create(
         title=f"{doc_title} - {doc_name}",
@@ -56,7 +51,6 @@ def generate_document_view(request):
 
     abs_docx = f'{base_url}{settings.MEDIA_URL}{document.file_docx}'
 
-    # Return DOCX URL only
     return Response({
         'id': document.id,
         'title': document.title,
@@ -78,7 +72,6 @@ def upload_document_view(request):
     if not file_docx and not file_pdf:
         return Response({'error': 'At least one file (DOCX or PDF) is required'}, status=status.HTTP_400_BAD_REQUEST)
     
-    # Create document record
     document = Document.objects.create(
         title=title,
         file_docx=file_docx if file_docx else None,

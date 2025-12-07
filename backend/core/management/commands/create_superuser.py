@@ -12,14 +12,12 @@ class Command(BaseCommand):
                 email='daniel@example.com',
                 password='password123'
             )
-            # Create admin profile
             UserProfile.objects.get_or_create(
                 user=user,
                 defaults={'role': 'admin'}
             )
             self.stdout.write(self.style.SUCCESS('Superuser "daniel" created successfully with admin role'))
         else:
-            # Update existing user to have admin profile
             user = User.objects.get(username='daniel')
             profile, created = UserProfile.objects.get_or_create(
                 user=user,

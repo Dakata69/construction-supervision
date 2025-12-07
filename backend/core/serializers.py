@@ -19,7 +19,7 @@ class UserSerializer(serializers.ModelSerializer):
     def get_role(self, obj):
         if hasattr(obj, 'profile'):
             return obj.profile.role
-        return 'privileged'  # Default role
+        return 'privileged'
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -40,7 +40,6 @@ class ProjectSerializer(serializers.ModelSerializer):
     contractor = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     start_date = serializers.DateField(required=False, allow_null=True)
     end_date = serializers.DateField(required=False, allow_null=True)
-    # Act 7 extra fields
     act7_date = serializers.DateField(required=False, allow_null=True)
     consultant_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     representative_builder = serializers.CharField(required=False, allow_blank=True, allow_null=True)

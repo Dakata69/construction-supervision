@@ -39,7 +39,6 @@ class Project(models.Model):
         default='planning'
     )
     progress = models.PositiveIntegerField(_('Progress (%)'), default=0, help_text=_('Manual progress override 0-100'))
-    # Act 7 related optional fields for direct document prefill
     act7_date = models.DateField(_('Act 7 Date'), null=True, blank=True)
     consultant_name = models.CharField(_('Consultant'), max_length=200, blank=True, default='')
     representative_builder = models.CharField(_('Representative Builder'), max_length=200, blank=True, default='')
@@ -53,7 +52,6 @@ class Project(models.Model):
     created_at = models.DateTimeField(_('Created At'), auto_now_add=True)
     updated_at = models.DateTimeField(_('Updated At'), auto_now=True)
     
-    # Many-to-many relationship with generated documents
     linked_documents = models.ManyToManyField(
         'Document',
         blank=True,
@@ -79,12 +77,11 @@ class Project(models.Model):
 
     @property
     def progress_percentage(self):
-        # If manual progress set, return it (bounded 0-100), else fallback to task-based calculation
         if self.progress:
             return min(max(self.progress, 0), 100)
         total_tasks = getattr(self, 'tasks', None).count() if hasattr(self, 'tasks') else 0
         if total_tasks == 0:
-            return self.progress  # likely 0
+            return self.progress
         completed_tasks = self.tasks.filter(status='completed').count()
         return min(max((completed_tasks / total_tasks) * 100, 0), 100)
 

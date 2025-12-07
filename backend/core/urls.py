@@ -9,7 +9,6 @@ from .views import (
     ActViewSet
 )
 
-# Create a router and register our viewsets with it
 router = DefaultRouter()
 router.register(r'documents', views.DocumentViewSet, basename='document')
 router.register(r'projects', ProjectViewSet, basename='project')
@@ -18,8 +17,6 @@ router.register(r'teams', TeamViewSet, basename='team')
 router.register(r'project-documents', ProjectDocumentViewSet, basename='project-document')
 router.register(r'acts', ActViewSet, basename='act')
 
-# The API URLs are now determined automatically by the router
-# Custom paths must come before router.urls to avoid conflicts
 urlpatterns = [
     path('documents/generate/', views.generate_document_view, name='documents-generate'),
     path('documents/upload/', views.upload_document_view, name='documents-upload'),

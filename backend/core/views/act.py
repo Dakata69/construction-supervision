@@ -40,17 +40,14 @@ class ActViewSet(viewsets.ModelViewSet):
         
         logger = logging.getLogger(__name__)
         
-        # Validate and create Act instance
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         act = serializer.save(created_by=request.user if self.request.user.is_authenticated else None)
         
         try:
-            # Prepare context from act
             context = act.get_context()
             template_name = act.get_template_name()
             
-            # Prepare paths
             docx_filename = f'{act.act_type}_{act.id}.docx'
             pdf_filename = f'{act.act_type}_{act.id}.pdf'
             doc_dir = os.path.join(settings.MEDIA_ROOT, 'acts',
@@ -61,28 +58,23 @@ class ActViewSet(viewsets.ModelViewSet):
             docx_path = os.path.join(doc_dir, docx_filename)
             pdf_path = os.path.join(doc_dir, pdf_filename)
             
-            # Ensure directory exists
             os.makedirs(doc_dir, exist_ok=True)
             
-            # Generate DOCX
             logger.info(f'Generating act {act.act_type} #{act.id} with template {template_name}')
             generate_document(template_name, context, docx_path)
             
-            # Convert to PDF
             logger.info(f'Converting {docx_path} to PDF')
             convert_to_pdf(docx_path, pdf_path)
             
-            # Save files to model
             with open(docx_path, 'rb') as f:
                 act.docx_file.save(docx_filename, File(f), save=False)
             with open(pdf_path, 'rb') as f:
                 act.pdf_file.save(pdf_filename, File(f), save=True)
             
-            # Return updated serializer with URLs
             return Response(self.get_serializer(act, context={'request': request}).data,
                             status=status.HTTP_201_CREATED)
         
         except Exception as e:
             logger.error(f'Act generation failed: {str(e)}')
-            act.delete()  # Clean up failed act
+            act.delete()
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

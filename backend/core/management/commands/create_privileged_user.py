@@ -17,27 +17,22 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         role = options['role']
         
-        # Generate username if not provided
         if options['username']:
             username = options['username']
         else:
-            # Generate unique username like PRIV-ABC123
             prefix = 'PRIV' if role == 'privileged' else role.upper()[:4]
             random_part = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(6))
             username = f"{prefix}-{random_part}"
         
-        # Generate strong password
         password = ''.join(secrets.choice(string.ascii_letters + string.digits + string.punctuation) 
                           for _ in range(16))
         
-        # Create user
         try:
             user = User.objects.create_user(
                 username=username,
                 password=password,
             )
             
-            # Create profile with role
             UserProfile.objects.create(
                 user=user,
                 role=role

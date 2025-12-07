@@ -39,7 +39,6 @@ class TeamViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     
     def list(self, request, *args, **kwargs):
-        # Return empty list instead of causing errors
         return Response([])
 
 
@@ -53,7 +52,7 @@ class ProjectDocumentViewSet(viewsets.ModelViewSet):
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all().order_by('-created_at')
     serializer_class = DocumentSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]  # Allow GET requests without authentication
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
@@ -68,7 +67,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
         
         logger = logging.getLogger(__name__)
         
-        # Get parameters from request
         template_name = request.data.get('template_name')
         context = request.data.get('context', {})
         signatures = request.data.get('signatures', {})
@@ -82,9 +80,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
         try:
             doc = Document.objects.create(
                 title=template_name,
-                created_at=None  # will be auto-set
+                created_at=None
             )
-            # Prepare paths
             docx_filename = f'{template_name}_{doc.id}.docx'
             pdf_filename = f'{template_name}_{doc.id}.pdf'
             zip_filename = f'{template_name}_{doc.id}.zip'
@@ -100,11 +97,9 @@ class DocumentViewSet(viewsets.ModelViewSet):
             pdf_path = os.path.join(doc_dir, pdf_filename)
             zip_path = os.path.join(doc_dir, zip_filename)
 
-            # Generate DOCX
             logger.info(f'Generating document {docx_path} with context {context}')
             generate_document(template_name, context, docx_path, signatures=signatures)
 
-            # Optional PDF conversion if utility exists
             try:
                 from .utils.pdf_export import convert_to_pdf
                 convert_to_pdf(docx_path, pdf_path)
@@ -112,19 +107,16 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 logger.warning(f'PDF conversion failed: {conv_err}')
                 pdf_path = None
 
-            # Write context.json
             context_json_path = os.path.join(doc_dir, f'{template_name}_{doc.id}_context.json')
             with open(context_json_path, 'w', encoding='utf-8') as cj:
                 json.dump(context, cj, ensure_ascii=False, indent=2)
 
-            # Build zip
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
                 zf.write(docx_path, arcname=docx_filename)
                 if pdf_path and os.path.exists(pdf_path):
                     zf.write(pdf_path, arcname=pdf_filename)
                 zf.write(context_json_path, arcname='context.json')
 
-            # Save files
             with open(docx_path, 'rb') as f:
                 doc.file_docx.save(docx_filename, File(f), save=False)
             if pdf_path and os.path.exists(pdf_path):
@@ -143,11 +135,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
 @api_view(['POST'])
 def generate_document_view(request):
-    # Keep for backward compatibility
-    # Minimal stub: create a Document instance and return paths
     title = request.data.get('template_name', 'generated')
     doc = Document.objects.create(title=title)
-    # In a real app, you'd run document_generator and pdf export here
     data = {
         'id': doc.id,
         'docx': f'/media/{doc.id}.docx',
@@ -190,7 +179,6 @@ class ActViewSet(viewsets.ModelViewSet):
         
         logger = logging.getLogger(__name__)
         
-        # Auto-fill representative_builder if blank using project contractor
         data = request.data.copy()
         project_id = data.get('project')
         if project_id and not data.get('representative_builder'):
@@ -202,17 +190,14 @@ class ActViewSet(viewsets.ModelViewSet):
             except Exception:
                 pass
 
-        # Validate and create Act instance
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         act = serializer.save(created_by=request.user if request.user.is_authenticated else None)
         
         try:
-            # Prepare context from act
             context = act.get_context()
             template_name = act.get_template_name()
             
-            # Prepare paths
             docx_filename = f'{act.act_type}_{act.id}.docx'
             pdf_filename = f'{act.act_type}_{act.id}.pdf'
             doc_dir = os.path.join(settings.MEDIA_ROOT, 'acts',
@@ -223,24 +208,19 @@ class ActViewSet(viewsets.ModelViewSet):
             docx_path = os.path.join(doc_dir, docx_filename)
             pdf_path = os.path.join(doc_dir, pdf_filename)
             
-            # Ensure directory exists
             os.makedirs(doc_dir, exist_ok=True)
             
-            # Generate DOCX
             logger.info(f'Generating act {act.act_type} #{act.id} with template {template_name}')
             generate_document(template_name, context, docx_path)
             
-            # Convert to PDF
             logger.info(f'Converting {docx_path} to PDF')
             convert_to_pdf(docx_path, pdf_path)
             
-            # Build context.json
             import json, zipfile
             context_json_path = os.path.join(doc_dir, f'{act.act_type}_{act.id}_context.json')
             with open(context_json_path, 'w', encoding='utf-8') as cj:
                 json.dump(context, cj, ensure_ascii=False, indent=2)
 
-            # Zip archive
             zip_filename = f'{act.act_type}_{act.id}.zip'
             zip_path = os.path.join(doc_dir, zip_filename)
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -248,7 +228,6 @@ class ActViewSet(viewsets.ModelViewSet):
                 zf.write(pdf_path, arcname=pdf_filename)
                 zf.write(context_json_path, arcname='context.json')
 
-            # Save files to model
             with open(docx_path, 'rb') as f:
                 act.docx_file.save(docx_filename, File(f), save=False)
             with open(pdf_path, 'rb') as f:
@@ -256,11 +235,10 @@ class ActViewSet(viewsets.ModelViewSet):
             with open(zip_path, 'rb') as f:
                 act.zip_file.save(zip_filename, File(f), save=True)
             
-            # Return updated serializer with URLs
             return Response(self.get_serializer(act, context={'request': request}).data,
                             status=status.HTTP_201_CREATED)
         
         except Exception as e:
             logger.error(f'Act generation failed: {str(e)}')
-            act.delete()  # Clean up failed act
+            act.delete()
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

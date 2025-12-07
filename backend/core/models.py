@@ -6,11 +6,11 @@ This file only re-exports them so Django's standard app model import
 (`core.models`) remains valid without duplicating definitions.
 """
 
-from .models.project import Project  # noqa: F401
-from .models.document import Document  # fixed import to actual class name
-from .models.task import Task  # noqa: F401
-from .models.team import Team  # noqa: F401
-from .models.act import Act  # noqa: F401
+from .models.project import Project
+from .models.document import Document
+from .models.task import Task
+from .models.team import Team
+from .models.act import Act
 
 __all__ = [
     'Project',

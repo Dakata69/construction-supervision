@@ -11,7 +11,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
-        # Save project
         if self.request.user.is_authenticated:
             serializer.save()
     

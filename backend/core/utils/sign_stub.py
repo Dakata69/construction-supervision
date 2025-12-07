@@ -16,32 +16,26 @@ def create_signature(name, role, date=None):
     Returns:
         BytesIO: Signature image in memory buffer
     """
-    # Create image with white background
     width = 600
     height = 200
     image = Image.new('RGB', (width, height), 'white')
     draw = ImageDraw.Draw(image)
     
     try:
-        # Try to load a font, fall back to default if not available
         font = ImageFont.truetype("arial.ttf", 32)
     except:
         font = ImageFont.load_default()
     
-    # Draw signature line
     line_y = height - 60
     draw.line([(50, line_y), (width-50, line_y)], fill='black', width=2)
     
-    # Draw name and role
     draw.text((50, line_y - 40), name, fill='black', font=font)
     draw.text((50, line_y + 10), role, fill='black', font=font)
     
-    # Draw date
     if date is None:
         date = datetime.now().strftime("%Y-%m-%d")
     draw.text((width-150, line_y + 10), date, fill='black', font=font)
     
-    # Save to memory buffer
     img_buffer = BytesIO()
     image.save(img_buffer, format='PNG')
     img_buffer.seek(0)
@@ -56,17 +50,13 @@ def sign_document(doc, signatures):
         doc: python-docx Document object
         signatures: List of tuples (name, role, date)
     """
-    # Add signature section if not exists
     doc.add_heading('Signatures', level=1)
     
-    # Add signatures table
     table = doc.add_table(rows=1, cols=len(signatures))
     
     for idx, (name, role, date) in enumerate(signatures):
-        # Create signature image
         sig_image = create_signature(name, role, date)
         
-        # Add to document
         cell = table.cell(0, idx)
         paragraph = cell.paragraphs[0]
         run = paragraph.add_run()

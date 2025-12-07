@@ -11,17 +11,11 @@ import os
 
 
 def _register_default_fonts():
-    # Register a Unicode-capable font if available; fallback to Helvetica
-    # Try several common locations on Windows/Linux and project media folder.
     candidates = [
-        # Project media fonts (recommended location)
         os.path.join(os.getcwd(), "backend", "media", "fonts", "DejaVuSans.ttf"),
         os.path.join(os.getcwd(), "media", "fonts", "DejaVuSans.ttf"),
-        # Current working directory
         os.path.join(os.getcwd(), "DejaVuSans.ttf"),
-        # Windows Arial Unicode MS
         os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts", "arialuni.ttf"),
-        # Linux common path
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/local/share/fonts/DejaVuSans.ttf",
     ]
@@ -50,19 +44,16 @@ def build_overlay(page_width: float, page_height: float, entries: List[Dict[str,
     font_name = _register_default_fonts()
     c.setFillColor(black)
 
-    # Optional debug grid
     if grid and grid.get("enabled"):
         step = _as_float(grid.get("step", 50), 50.0)
         c.setStrokeColor(Color(0.8, 0.8, 0.8))
         c.setLineWidth(0.25)
-        # Vertical lines
         x = 0.0
         while x <= page_width:
             c.line(x, 0, x, page_height)
             c.setFont(font_name, 6)
             c.drawString(x + 2, 2, f"{int(x)}")
             x += step
-        # Horizontal lines
         y = 0.0
         while y <= page_height:
             c.line(0, y, page_width, y)
@@ -138,7 +129,6 @@ def fill_pdf_template(template_pdf_path: str, output_pdf_path: str, context: Dic
         page_width = _as_float(page_cfg.get("width", base_width), base_width)
         page_height = _as_float(page_cfg.get("height", base_height), base_height)
 
-        # Build overlay entries from context
         entries: List[Dict[str, Any]] = []
         debug_names = False
         try:

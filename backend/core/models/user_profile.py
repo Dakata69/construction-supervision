@@ -5,8 +5,8 @@ from django.utils.translation import gettext_lazy as _
 class UserProfile(models.Model):
     """Extended user profile for role-based access"""
     ROLE_CHOICES = [
-        ('privileged', _('Privileged User')),  # Can view all projects but not edit
-        ('admin', _('Admin')),  # Full access (employees)
+        ('privileged', _('Privileged User')),
+        ('admin', _('Admin')),
     ]
     
     user = models.OneToOneField(

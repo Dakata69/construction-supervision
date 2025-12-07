@@ -7,10 +7,8 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
-        # Create superuser if doesn't exist
         if not User.objects.filter(username='admin').exists():
             User.objects.create_superuser('admin', 'admin@example.com', 'adminpassword')
             self.stdout.write(self.style.SUCCESS('Superuser created successfully'))
         
-        # Add more initial data here if needed
         self.stdout.write(self.style.SUCCESS('Initial data created successfully'))
