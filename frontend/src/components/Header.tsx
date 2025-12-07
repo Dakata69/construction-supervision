@@ -141,13 +141,14 @@ const StyledAvatar = styled(Avatar)`
 export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const dispatch = useDispatch();
   const backgroundEnabled = useSelector((state: RootState) => state.ui.backgroundEnabled);
   const dayNightCycleEnabled = useSelector((state: RootState) => state.ui.dayNightCycleEnabled);
   const userRole = useSelector((state: RootState) => state.auth.role);
   const canEdit = useSelector((state: RootState) => state.auth.canEdit);
   const authInitialized = useSelector((state: RootState) => state.auth.authInitialized);
+  const user = useSelector((state: RootState) => state.auth.user);
+  const isAuthenticated = !!user;
   const [apiHealthy, setApiHealthy] = useState<boolean | null>(null);
   
   // Debug logging
@@ -187,7 +188,7 @@ export default function Header() {
   const handleMenuClick = ({ key }: { key: string }) => {
     if (key === 'logout') {
       localStorage.removeItem('auth_token');
-      setIsAuthenticated(false);
+      dispatch({ type: 'auth/logout' });
       navigate('/login');
     } else {
       navigate(key);
