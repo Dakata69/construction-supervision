@@ -162,20 +162,7 @@ export default function Header() {
 
   // Backend API health check
   useEffect(() => {
-    let cancelled = false;
-    const check = async () => {
-      try {
-        try {
-          await api.get('');
-          if (!cancelled) setApiHealthy(true);
-        } catch {
-          if (!cancelled) setApiHealthy(false);
-        }
-      } catch {}
-    };
-    check();
-    const id = setInterval(check, 15000);
-    return () => { cancelled = true; clearInterval(id); };
+    return;
   }, []);
   
   const userMenuItems: MenuItem[] = [
