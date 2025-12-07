@@ -1,0 +1,14 @@
+providers = ["python"]
+
+[phases.install]
+cmds = [
+  "pip install --no-cache-dir -r backend/requirements.txt"
+]
+
+[phases.build]
+cmds = [
+  "python3 backend/manage.py collectstatic --noinput || true"
+]
+
+[start]
+cmd = "sh start.sh"
