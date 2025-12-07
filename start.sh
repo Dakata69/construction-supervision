@@ -5,10 +5,7 @@ set -eu
 SCRIPT_DIR="$(dirname "$0")"
 cd "$SCRIPT_DIR"
 
-# Install backend dependencies if requirements exist
-if [ -f "backend/requirements.txt" ]; then
-  pip install --no-cache-dir -r backend/requirements.txt
-fi
+# Dependencies are installed at build time by Nixpacks; no pip install here.
 
 # Django management commands
 python backend/manage.py collectstatic --noinput
