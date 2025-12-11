@@ -154,17 +154,6 @@ export default function Header() {
   // Debug logging
   console.log('Header - isAuthenticated:', isAuthenticated, 'userRole:', userRole, 'canEdit:', canEdit);
   
-  // Check authentication status
-  useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    setIsAuthenticated(!!token);
-  }, [location]); // Re-check on location change
-
-  // Backend API health check
-  useEffect(() => {
-    return;
-  }, []);
-  
   const userMenuItems: MenuItem[] = [
     {
       key: 'logout',
