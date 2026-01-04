@@ -18,19 +18,39 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def get_token(cls, user):
         token = super().get_token(user)
         
-        if hasattr(user, 'profile'):
-            token['role'] = user.profile.role
-        else:
-            token['role'] = 'privileged'
+        # Ensure user has a profile
+        if not hasattr(user, 'profile'):
+            from .models import UserProfile
+            UserProfile.objects.get_or_create(user=user)
+        
+        token['role'] = user.profile.role if hasattr(user, 'profile') else 'privileged'
         
         return token
     
     def validate(self, attrs):
-        data = super().validate(attrs)
+        from .utils.activity_logger import log_user_login
         
-        data['user'] = UserSerializer(self.user).data
-        
-        return data
+        try:
+            data = super().validate(attrs)
+            
+            # Ensure user has a profile before serialization
+            if not hasattr(self.user, 'profile'):
+                from .models import UserProfile
+                UserProfile.objects.get_or_create(user=self.user)
+            
+            data['user'] = UserSerializer(self.user).data
+            
+            # Log the login
+            if hasattr(self, 'context') and 'request' in self.context:
+                log_user_login(self.user, self.context['request'])
+            
+            return data
+        except Exception as e:
+            # Log the error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Login error for user {attrs.get('username', 'unknown')}: {str(e)}")
+            raise
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -83,6 +103,8 @@ def create_privileged_user_view(request):
                       for _ in range(16))
     
     try:
+        from .utils.activity_logger import log_user_created
+        
         user = User.objects.create_user(
             username=username,
             password=password,
@@ -92,6 +114,9 @@ def create_privileged_user_view(request):
             user=user,
             role=role
         )
+        
+        # Log activity
+        log_user_created(username, request.user, request)
         
         return Response({
             'success': True,

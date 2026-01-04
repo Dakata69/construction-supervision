@@ -6,6 +6,18 @@ from .project import (
 )
 from .document import DocumentViewSet, generate_document_view, upload_document_view
 from .act import ActViewSet
+from .activity import ActivityLogViewSet, upcoming_tasks_view
+from .features import (
+    ProjectBudgetViewSet,
+    BudgetExpenseViewSet,
+    DocumentTemplateViewSet,
+    TextSnippetViewSet,
+    WeatherLogViewSet,
+    ReminderViewSet,
+    analytics_dashboard_view,
+    fetch_weather_view,
+    validate_bulgarian_id_view
+)
 
 __all__ = [
     'ProjectViewSet',
@@ -16,4 +28,15 @@ __all__ = [
     'generate_document_view',
     'upload_document_view',
     'ActViewSet',
+    'ActivityLogViewSet',
+    'upcoming_tasks_view',
+    'ProjectBudgetViewSet',
+    'BudgetExpenseViewSet',
+    'DocumentTemplateViewSet',
+    'TextSnippetViewSet',
+    'WeatherLogViewSet',
+    'ReminderViewSet',
+    'analytics_dashboard_view',
+    'fetch_weather_view',
+    'validate_bulgarian_id_view',
 ]

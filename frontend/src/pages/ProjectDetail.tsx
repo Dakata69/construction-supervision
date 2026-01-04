@@ -8,7 +8,6 @@ import {
   Table,
   Button,
   Space,
-  Progress,
   Badge,
   Timeline,
   Modal,
@@ -17,8 +16,8 @@ import {
   Form,
   Select,
   DatePicker,
-  Slider,
   Input,
+  Skeleton,
 } from 'antd';
 import dayjs from 'dayjs';
 import type { TabsProps } from 'antd';
@@ -31,17 +30,15 @@ import {
   LinkOutlined,
   DeleteOutlined,
   DownloadOutlined,
+  DollarOutlined,
+  CloudOutlined,
 } from '@ant-design/icons';
 import { useProject, useProjectTasks } from '../api/hooks/projects';
 import { api } from '../api/client';
+import BudgetTracking from './BudgetTracking';
+import WeatherLogging from './WeatherLogging';
 
-// Simple helper to ensure a number for Progress component
-const safePercent = (value: any) => {
-  const num = typeof value === 'number' && !isNaN(value) ? value : 0;
-  if (num < 0) return 0;
-  if (num > 100) return 100;
-  return num;
-};
+// Removed project progress UI
 
 const statusColors = {
   planning: 'blue',
@@ -302,8 +299,11 @@ const ProjectDetail: React.FC = () => {
 
   if (projectLoading) {
     return (
-      <div style={{ padding: '24px', textAlign: 'center' }}>
-        <p>Зареждане...</p>
+      <div style={{ padding: '24px' }}>
+        <Card>
+          <Skeleton active title={{ width: 200 }} paragraph={{ rows: 3 }} />
+          <Skeleton active paragraph={{ rows: 6 }} />
+        </Card>
       </div>
     );
   }
@@ -371,9 +371,6 @@ const ProjectDetail: React.FC = () => {
           </Descriptions.Item>
           <Descriptions.Item label="Крайна дата">
             {project?.end_date}
-          </Descriptions.Item>
-          <Descriptions.Item label="Прогрес" span={3}>
-            <Progress percent={safePercent((project as any).progress_percentage)} />
           </Descriptions.Item>
           <Descriptions.Item label="Бележки" span={3}>
             {project?.notes || 'Няма бележки'}
@@ -453,6 +450,26 @@ const ProjectDetail: React.FC = () => {
                 </div>
               ),
             },
+            {
+              key: 'budget',
+              label: (
+                <span>
+                  <DollarOutlined />
+                  Бюджет
+                </span>
+              ),
+              children: <BudgetTracking projectId={Number(id)} />,
+            },
+            {
+              key: 'weather',
+              label: (
+                <span>
+                  <CloudOutlined />
+                  Метеорология
+                </span>
+              ),
+              children: <WeatherLogging projectId={Number(id)} />,
+            },
           ]}
         />
       </Card>
@@ -504,13 +521,6 @@ const ProjectDetail: React.FC = () => {
             <DatePicker
               style={{ width: '100%' }}
               format="YYYY-MM-DD"
-            />
-          </Form.Item>
-          <Form.Item label="Прогрес (%)" name="progress">
-            <Slider
-              min={0}
-              max={100}
-              marks={{ 0: '0%', 25: '25%', 50: '50%', 75: '75%', 100: '100%' }}
             />
           </Form.Item>
           <Form.Item label="Бележки" name="notes">

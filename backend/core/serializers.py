@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Project, Document, Task, Act, UserProfile
+from .models import (
+    Project, Document, Task, Act, UserProfile, PushSubscription, ActivityLog,
+    ProjectBudget, BudgetExpense, DocumentTemplate, TextSnippet, WeatherLog, Reminder
+)
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -17,9 +20,14 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'role']
     
     def get_role(self, obj):
-        if hasattr(obj, 'profile'):
-            return obj.profile.role
-        return 'privileged'
+        try:
+            if hasattr(obj, 'profile'):
+                return obj.profile.role
+            # Create profile if it doesn't exist
+            profile, created = UserProfile.objects.get_or_create(user=obj)
+            return profile.role
+        except Exception:
+            return 'privileged'
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -125,6 +133,13 @@ class ActSerializer(serializers.ModelSerializer):
             if request:
                 return request.build_absolute_uri(obj.docx_file.url)
         return None
+
+
+class PushSubscriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PushSubscription
+        fields = ['id', 'endpoint', 'p256dh', 'auth', 'created_at']
+        read_only_fields = ['id', 'created_at']
     
     def get_pdf_url(self, obj):
         if obj.pdf_file:
@@ -139,3 +154,96 @@ class ActSerializer(serializers.ModelSerializer):
             if request:
                 return request.build_absolute_uri(obj.zip_file.url)
         return None
+
+
+class ActivityLogSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    action_display = serializers.CharField(source='get_action_type_display', read_only=True)
+    
+    class Meta:
+        model = ActivityLog
+        fields = ['id', 'user', 'username', 'action_type', 'action_display', 
+                  'description', 'content_type', 'object_id', 'metadata', 
+                  'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class BudgetExpenseSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source='created_by.username', read_only=True)
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    
+    class Meta:
+        model = BudgetExpense
+        fields = ['id', 'budget', 'category', 'category_display', 'description', 
+                  'amount', 'date', 'invoice_number', 'vendor', 'notes', 
+                  'created_by', 'created_by_name', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
+
+
+class ProjectBudgetSerializer(serializers.ModelSerializer):
+    expenses = BudgetExpenseSerializer(many=True, read_only=True)
+    total_expenses = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    remaining_budget = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    budget_usage_percentage = serializers.FloatField(read_only=True)
+    is_over_budget = serializers.BooleanField(read_only=True)
+    
+    class Meta:
+        model = ProjectBudget
+        fields = ['id', 'project', 'initial_budget', 'currency', 'notes',
+                  'total_expenses', 'remaining_budget', 'budget_usage_percentage',
+                  'is_over_budget', 'expenses', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class DocumentTemplateSerializer(serializers.ModelSerializer):
+    template_type_display = serializers.CharField(source='get_template_type_display', read_only=True)
+    created_by_name = serializers.CharField(source='created_by.username', read_only=True)
+    
+    class Meta:
+        model = DocumentTemplate
+        fields = ['id', 'name', 'template_type', 'template_type_display', 
+                  'description', 'default_content', 'template_file', 'is_active',
+                  'created_by', 'created_by_name', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
+
+
+class TextSnippetSerializer(serializers.ModelSerializer):
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    created_by_name = serializers.CharField(source='created_by.username', read_only=True)
+    
+    class Meta:
+        model = TextSnippet
+        fields = ['id', 'title', 'category', 'category_display', 'content', 
+                  'tags', 'usage_count', 'is_active', 'created_by', 
+                  'created_by_name', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'usage_count', 'created_at', 'updated_at', 'created_by']
+
+
+class WeatherLogSerializer(serializers.ModelSerializer):
+    is_unfavorable = serializers.BooleanField(read_only=True)
+    
+    class Meta:
+        model = WeatherLog
+        fields = ['id', 'project', 'date', 'temperature_min', 'temperature_max',
+                  'condition', 'precipitation', 'wind_speed', 'humidity',
+                  'work_stopped', 'impact_notes', 'is_unfavorable',
+                  'api_source', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class ReminderSerializer(serializers.ModelSerializer):
+    reminder_type_display = serializers.CharField(source='get_reminder_type_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    recipient_name = serializers.CharField(source='recipient.username', read_only=True)
+    project_name = serializers.CharField(source='project.name', read_only=True, allow_null=True)
+    task_title = serializers.CharField(source='task.title', read_only=True, allow_null=True)
+    
+    class Meta:
+        model = Reminder
+        fields = ['id', 'reminder_type', 'reminder_type_display', 'title', 
+                  'message', 'project', 'project_name', 'task', 'task_title',
+                  'trigger_date', 'sent_at', 'recipient', 'recipient_name',
+                  'status', 'status_display', 'push_sent', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'sent_at', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at']
+

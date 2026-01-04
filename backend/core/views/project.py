@@ -9,10 +9,30 @@ class ProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.all().order_by('-created_at')
     serializer_class = ProjectSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    
+    def get_queryset(self):
+        """Filter projects based on user role"""
+        queryset = Project.objects.all().order_by('-created_at')
+        user = self.request.user
+        
+        if user.is_authenticated and hasattr(user, 'profile'):
+            # Clients can only see their assigned projects
+            if user.profile.is_client():
+                queryset = user.profile.accessible_projects.all()
+        
+        return queryset
 
     def perform_create(self, serializer):
+        from ..utils.activity_logger import log_project_created
         if self.request.user.is_authenticated:
-            serializer.save()
+            project = serializer.save()
+            log_project_created(project, self.request.user, self.request)
+    
+    def perform_update(self, serializer):
+        from ..utils.activity_logger import log_project_updated
+        project = serializer.save()
+        if self.request.user.is_authenticated:
+            log_project_updated(project, self.request.user, self.request)
     
     @action(detail=True, methods=['get'])
     def linked_documents(self, request, pk=None):

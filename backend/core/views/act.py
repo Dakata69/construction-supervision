@@ -36,6 +36,7 @@ class ActViewSet(viewsets.ModelViewSet):
         import os
         from ..utils.document_generator import generate_document
         from ..utils.pdf_export import convert_to_pdf
+        from ..utils.activity_logger import log_act_created
         import logging
         
         logger = logging.getLogger(__name__)
@@ -70,6 +71,10 @@ class ActViewSet(viewsets.ModelViewSet):
                 act.docx_file.save(docx_filename, File(f), save=False)
             with open(pdf_path, 'rb') as f:
                 act.pdf_file.save(pdf_filename, File(f), save=True)
+            
+            # Log activity
+            if request.user.is_authenticated:
+                log_act_created(act, request.user, request)
             
             return Response(self.get_serializer(act, context={'request': request}).data,
                             status=status.HTTP_201_CREATED)

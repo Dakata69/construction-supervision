@@ -1,5 +1,5 @@
 // frontend/src/components/Header.tsx
-import { Layout, Menu, Button, Avatar, Dropdown, Switch, Tooltip, Space } from 'antd';
+import { Layout, Menu, Button, Avatar, Dropdown, Switch, Tooltip, Space, message } from 'antd';
 import type { MenuProps } from 'antd';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -13,14 +13,21 @@ import {
   EyeOutlined,
   BulbOutlined,
   MoonOutlined,
-  DashboardOutlined
+  DashboardOutlined,
+  BellOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
+import { BarChartOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toggleBackground, toggleDayNightCycle } from '../store/uiSlice';
+import { logout } from '../store/authSlice';
 import type { RootState } from '../store/store';
 import { api } from '../api/client';
+import { registerPush, unregisterPush } from '../utils/push';
+import { usePendingReminders, useDismissReminder } from '../api/hooks/useFeatures';
+import type { Reminder } from '../api/hooks/useFeatures';
 
 const { Header: AntHeader } = Layout;
 type MenuItem = Required<MenuProps>['items'][number];
@@ -150,6 +157,14 @@ export default function Header() {
   const user = useSelector((state: RootState) => state.auth.user);
   const isAuthenticated = !!user;
   const [apiHealthy, setApiHealthy] = useState<boolean | null>(null);
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [remindersOpen, setRemindersOpen] = useState(false);
+  
+  // Fetch pending reminders
+  const { data: reminders = [] } = usePendingReminders();
+  const dismissReminder = useDismissReminder();
   
   // Debug logging
   console.log('Header - isAuthenticated:', isAuthenticated, 'userRole:', userRole, 'canEdit:', canEdit);
@@ -163,15 +178,111 @@ export default function Header() {
     },
   ];
 
+  useEffect(() => {
+    const checkPush = async () => {
+      const supported = 'serviceWorker' in navigator && 'PushManager' in window;
+      setPushSupported(supported);
+      if (!supported) return;
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = await reg?.pushManager.getSubscription();
+        setPushEnabled(!!sub);
+      } catch (e) {
+        setPushEnabled(false);
+      }
+    };
+    checkPush();
+  }, []);
+
+  useEffect(() => {
+    api.get('health/').then(() => setApiHealthy(true)).catch(() => setApiHealthy(false));
+  }, []);
+
   const handleMenuClick = ({ key }: { key: string }) => {
     if (key === 'logout') {
       localStorage.removeItem('auth_token');
-      dispatch({ type: 'auth/logout' });
+      dispatch(logout());
       navigate('/login');
     } else {
       navigate(key);
     }
   };
+
+  const handlePushToggle = async () => {
+    if (!pushSupported) {
+      message.warning('Браузърът не поддържа push известия.');
+      return;
+    }
+    setPushLoading(true);
+    try {
+      if (pushEnabled) {
+        const ok = await unregisterPush();
+        setPushEnabled(false);
+        if (ok) message.success('Push известията са изключени.');
+      } else {
+        const ok = await registerPush();
+        setPushEnabled(!!ok);
+        if (ok) message.success('Push известията са включени.');
+        else message.error('Неуспешно включване на push известия.');
+      }
+    } catch (e) {
+      message.error('Възникна грешка при push настройките.');
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const handleTestNotification = () => {
+    if (!('Notification' in window)) {
+      message.warning('Браузърът не поддържа известия.');
+      return;
+    }
+    if (Notification.permission !== 'granted') {
+      message.info('Моля позволете известия и опитайте отново.');
+      return;
+    }
+    try {
+      new Notification('Тестово известие', { body: 'Push тест от приложението.' });
+    } catch (e) {
+      message.error('Неуспешно показване на тестово известие.');
+    }
+  };
+
+  const handleDismissReminder = async (reminderId: number) => {
+    try {
+      await dismissReminder.mutateAsync(reminderId);
+      message.success('Напомнянето е маркирано като прочетено');
+    } catch (error) {
+      message.error('Грешка при маркиране на напомнянето');
+    }
+  };
+
+  const reminderMenuItems: MenuItem[] = reminders.map((reminder: Reminder) => ({
+    key: reminder.id,
+    label: (
+      <div style={{ width: '300px', padding: '8px' }}>
+        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{reminder.title}</div>
+        <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
+          {reminder.message}
+        </div>
+        {reminder.project_name && (
+          <div style={{ fontSize: '11px', color: '#999', marginBottom: '8px' }}>
+            Проект: {reminder.project_name}
+          </div>
+        )}
+        <Button 
+          size="small" 
+          type="link" 
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDismissReminder(reminder.id);
+          }}
+        >
+          Маркирай като прочетено
+        </Button>
+      </div>
+    ),
+  }));
   
   // Build menu items dynamically based on authentication
   const menuItems: MenuItem[] = [
@@ -190,11 +301,18 @@ export default function Header() {
   // Add authenticated menu items
   if (isAuthenticated) {
     // All authenticated users can see projects immediately
-    menuItems.push({
-      key: '/projects',
-      icon: <ProjectOutlined />,
-      label: 'Обекти',
-    });
+    menuItems.push(
+      {
+        key: '/projects',
+        icon: <ProjectOutlined />,
+        label: 'Обекти',
+      },
+      {
+        key: '/analytics',
+        icon: <BarChartOutlined />,
+        label: 'Аналитика',
+      }
+    );
   }
   // Only admins can see Documents and Admin panel (after auth is resolved)
   if (authInitialized && canEdit) {
@@ -203,6 +321,11 @@ export default function Header() {
         key: '/documents',
         icon: <FileOutlined />,
         label: 'Документи',
+      },
+      {
+        key: '/templates',
+        icon: <FileTextOutlined />,
+        label: 'Шаблони',
       },
       {
         key: '/admin',
@@ -249,8 +372,48 @@ export default function Header() {
               />
             </Tooltip>
           )}
+          {isAuthenticated && reminders.length > 0 && (
+            <Dropdown
+              menu={{ items: reminderMenuItems.length > 0 ? reminderMenuItems : [{ key: 'none', label: 'Няма напомняния', disabled: true }] }}
+              trigger={['click']}
+              placement="bottomRight"
+            >
+              <Button
+                size="small"
+                icon={<BellOutlined />}
+                style={{ position: 'relative' }}
+              >
+                {reminders.length > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-5px',
+                    right: '-5px',
+                    background: '#ff4d4f',
+                    color: 'white',
+                    borderRadius: '10px',
+                    padding: '0 6px',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                  }}>
+                    {reminders.length}
+                  </span>
+                )}
+              </Button>
+            </Dropdown>
+          )}
+          {isAuthenticated && pushSupported && (
+            <Tooltip title={pushEnabled ? 'Изключи push' : 'Включи push'}>
+              <Button
+                size="small"
+                type={pushEnabled ? 'primary' : 'default'}
+                icon={<BellOutlined />}
+                loading={pushLoading}
+                onClick={handlePushToggle}
+              />
+            </Tooltip>
+          )}
         </Space>
-        {authInitialized && isAuthenticated ? (
+        {isAuthenticated ? (
           <Dropdown
             menu={{
               items: userMenuItems,

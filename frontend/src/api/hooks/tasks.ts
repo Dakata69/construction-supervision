@@ -21,11 +21,45 @@ export const useCreateTask = () => {
   return useMutation({
     mutationFn: (data: any) =>
       api.post('/tasks', data).then((res) => res.data),
-    onSuccess: (data) => {
+    onMutate: async (newTask) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+      const previousTasks = queryClient.getQueryData<any[]>(['tasks']);
+      const optimisticTask = {
+        ...newTask,
+        id: `temp-${Date.now()}`,
+        optimistic: true,
+      };
+      queryClient.setQueryData<any[]>(['tasks'], (old = []) => [...old, optimisticTask]);
+
+      let previousProjectTasks: any[] | undefined;
+      if (newTask?.project) {
+        await queryClient.cancelQueries({ queryKey: ['projects', newTask.project, 'tasks'] });
+        previousProjectTasks = queryClient.getQueryData<any[]>(['projects', newTask.project, 'tasks']);
+        queryClient.setQueryData<any[]>(['projects', newTask.project, 'tasks'], (old = []) => [...old, optimisticTask]);
+      }
+
+      return { previousTasks, previousProjectTasks, projectId: newTask?.project };
+    },
+    onError: (_err, _newTask, context) => {
+      if (!context) return;
+      queryClient.setQueryData(['tasks'], context.previousTasks ?? []);
+      if (context.projectId) {
+        queryClient.setQueryData(['projects', context.projectId, 'tasks'], context.previousProjectTasks ?? []);
+      }
+    },
+    onSuccess: (data, _vars, context) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({
-        queryKey: ['projects', data.project, 'tasks'],
-      });
+      if (data?.project) {
+        queryClient.invalidateQueries({
+          queryKey: ['projects', data.project, 'tasks'],
+        });
+      }
+      // Replace optimistic entry in project tasks if present
+      if (context?.projectId) {
+        queryClient.setQueryData<any[]>(['projects', context.projectId, 'tasks'], (old = []) => {
+          return old.map((t) => (t.id?.toString().startsWith('temp-') ? data : t));
+        });
+      }
     },
   });
 };
@@ -35,11 +69,42 @@ export const useUpdateTask = (id: string) => {
   return useMutation({
     mutationFn: (data: any) =>
       api.put(`/tasks/${id}`, data).then((res) => res.data),
-    onSuccess: (data) => {
+    onMutate: async (updates) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', id] });
+      const previousTask = queryClient.getQueryData<any>(['tasks', id]);
+      queryClient.setQueryData(['tasks', id], { ...previousTask, ...updates });
+
+      const projectId = previousTask?.project || updates?.project;
+      let previousProjectTasks: any[] | undefined;
+      if (projectId) {
+        await queryClient.cancelQueries({ queryKey: ['projects', projectId, 'tasks'] });
+        previousProjectTasks = queryClient.getQueryData<any[]>(['projects', projectId, 'tasks']);
+        queryClient.setQueryData<any[]>(['projects', projectId, 'tasks'], (old = []) =>
+          old.map((t) => (t.id === previousTask?.id ? { ...t, ...updates } : t))
+        );
+      }
+
+      return { previousTask, previousProjectTasks, projectId };
+    },
+    onError: (_err, _updates, context) => {
+      if (!context) return;
+      queryClient.setQueryData(['tasks', id], context.previousTask);
+      if (context.projectId) {
+        queryClient.setQueryData(['projects', context.projectId, 'tasks'], context.previousProjectTasks ?? []);
+      }
+    },
+    onSuccess: (data, _vars, context) => {
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
-      queryClient.invalidateQueries({
-        queryKey: ['projects', data.project, 'tasks'],
-      });
+      if (data?.project) {
+        queryClient.invalidateQueries({
+          queryKey: ['projects', data.project, 'tasks'],
+        });
+      }
+      if (context?.projectId) {
+        queryClient.setQueryData<any[]>(['projects', context.projectId, 'tasks'], (old = []) =>
+          old.map((t) => (t.id === data.id ? data : t))
+        );
+      }
     },
   });
 };

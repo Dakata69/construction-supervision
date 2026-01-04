@@ -3,6 +3,8 @@ import { PlusOutlined, UploadOutlined, DeleteOutlined } from '@ant-design/icons'
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import { useState } from 'react';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../store/store';
 
 const { Title, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -71,12 +73,23 @@ const PreviousProjects = () => {
   const [projectList, setProjectList] = useState(projects);
   const [fileList, setFileList] = useState<any[]>([]);
   
+  // Get user role from Redux
+  const userRole = useSelector((state: RootState) => state.auth.role);
+  const canEdit = useSelector((state: RootState) => state.auth.canEdit);
+  
   // Check if user is authenticated
   const isAuthenticated = !!localStorage.getItem('auth_token');
+  
+  // Only non-privileged users can add/delete projects
+  const canModifyProjects = isAuthenticated && canEdit;
 
   const showModal = () => {
     if (!isAuthenticated) {
       message.warning('Моля, влезте в профила си, за да добавите проект');
+      return;
+    }
+    if (!canModifyProjects) {
+      message.error('Нямате право да добавяте проекти');
       return;
     }
     setIsModalOpen(true);
@@ -113,6 +126,10 @@ const PreviousProjects = () => {
       message.warning('Моля, влезте в профила си, за да изтриете проект');
       return;
     }
+    if (!canModifyProjects) {
+      message.error('Нямате право да изтривате проекти');
+      return;
+    }
     try {
       // Here you would typically send a DELETE request to your backend API
       setProjectList(projectList.filter(p => p.id !== projectId));
@@ -139,7 +156,7 @@ const PreviousProjects = () => {
         <Title level={2} style={{ margin: 0 }}>
           Завършени проекти
         </Title>
-        {isAuthenticated && (
+        {canModifyProjects && (
           <Button 
             type="primary" 
             icon={<PlusOutlined />} 
@@ -174,7 +191,7 @@ const PreviousProjects = () => {
                     />
                   </div>
                 }
-                actions={isAuthenticated ? [
+                actions={canModifyProjects ? [
                   <Popconfirm
                     title="Изтриване на проект"
                     description="Сигурни ли сте, че искате да изтриете този проект?"

@@ -92,6 +92,17 @@ railway run python manage.py createsuperuser
 
 ---
 
+## Schedule deadline notifications
+
+Run the management command `python manage.py send_due_notifications` daily to deliver push alerts for upcoming task deadlines (7, 3, 1 days, today, overdue) to assignees.
+
+- Linux (cron): `0 7 * * * cd /app && python manage.py send_due_notifications`
+- Windows Task Scheduler: create a daily task running `powershell.exe -Command "Set-Location C:\path\to\backend; python manage.py send_due_notifications"`
+
+Ensure environment variables (database, VAPID keys) are available in the scheduled context.
+
+---
+
 ## Local Development
 
 Still works as before:

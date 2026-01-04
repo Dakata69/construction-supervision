@@ -1,7 +1,14 @@
-import { Card, Row, Col, Statistic, Button, Modal, message, Space, Typography, Select } from 'antd';
-import { UserOutlined, ProjectOutlined, FileOutlined, UserAddOutlined, CopyOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Statistic, Button, Modal, message, Space, Typography, Select, List, Tag, Spin } from 'antd';
+import { UserOutlined, ProjectOutlined, FileOutlined, UserAddOutlined, CopyOutlined, ClockCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useState } from 'react';
 import { api } from '../api/client';
+import { useRecentActivities, useUpcomingTasks } from '../api/hooks/useActivityLogs';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import 'dayjs/locale/bg';
+
+dayjs.extend(relativeTime);
+dayjs.locale('bg');
 
 const { Text, Paragraph } = Typography;
 
@@ -10,6 +17,10 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [credentials, setCredentials] = useState<any>(null);
   const [selectedRole, setSelectedRole] = useState('privileged');
+  
+  // Fetch real data
+  const { data: recentActivities, isLoading: activitiesLoading } = useRecentActivities(5);
+  const { data: upcomingTasks, isLoading: tasksLoading } = useUpcomingTasks(5, 30);
 
   const handleCreateUser = async () => {
     setLoading(true);
@@ -83,22 +94,90 @@ export default function AdminDashboard() {
       
       <Row gutter={16} style={{ marginTop: '24px' }}>
         <Col span={12}>
-          <Card title="Последни действия">
-            <ul>
-              <li>Създаден нов проект "Жилищна сграда"</li>
-              <li>Генериран Акт 14</li>
-              <li>Добавен нов потребител</li>
-              <li>Актуализиран статус на проект</li>
-            </ul>
+          <Card 
+            title="Последни действия" 
+            extra={activitiesLoading && <Spin size="small" />}
+          >
+            {activitiesLoading ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <Spin />
+              </div>
+            ) : recentActivities && recentActivities.length > 0 ? (
+              <List
+                dataSource={recentActivities}
+                renderItem={(activity) => (
+                  <List.Item>
+                    <List.Item.Meta
+                      avatar={<CheckCircleOutlined style={{ color: '#52c41a', fontSize: 16 }} />}
+                      title={activity.description}
+                      description={
+                        <Space>
+                          <Text type="secondary">{activity.username || 'Система'}</Text>
+                          <Text type="secondary">•</Text>
+                          <Text type="secondary">
+                            {dayjs(activity.created_at).fromNow()}
+                          </Text>
+                        </Space>
+                      }
+                    />
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <Text type="secondary">Няма налични действия</Text>
+            )}
           </Card>
         </Col>
         <Col span={12}>
-          <Card title="Предстоящи задачи">
-            <ul>
-              <li>Преглед на Акт 15 за проект "Офис сграда"</li>
-              <li>Одобрение на документи</li>
-              <li>Обновяване на проектна документация</li>
-            </ul>
+          <Card 
+            title="Предстоящи задачи" 
+            extra={tasksLoading && <Spin size="small" />}
+          >
+            {tasksLoading ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <Spin />
+              </div>
+            ) : upcomingTasks && upcomingTasks.length > 0 ? (
+              <List
+                dataSource={upcomingTasks}
+                renderItem={(task) => (
+                  <List.Item>
+                    <List.Item.Meta
+                      avatar={<ClockCircleOutlined style={{ color: '#1890ff', fontSize: 16 }} />}
+                      title={
+                        <Space>
+                          {task.title}
+                          {task.priority === 'urgent' && <Tag color="red">Спешно</Tag>}
+                          {task.priority === 'high' && <Tag color="orange">Високо</Tag>}
+                        </Space>
+                      }
+                      description={
+                        <Space direction="vertical" size={0}>
+                          {task.description && (
+                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                              {task.description}
+                            </Text>
+                          )}
+                          <Space>
+                            {task.assigned_to_name && (
+                              <>
+                                <Text type="secondary">Възложена на: {task.assigned_to_name}</Text>
+                                <Text type="secondary">•</Text>
+                              </>
+                            )}
+                            <Text type="secondary">
+                              Краен срок: {dayjs(task.due_date).fromNow()}
+                            </Text>
+                          </Space>
+                        </Space>
+                      }
+                    />
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <Text type="secondary">Няма предстоящи задачи</Text>
+            )}
           </Card>
         </Col>
       </Row>

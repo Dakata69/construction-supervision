@@ -2,8 +2,8 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, action, permission_classes
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny
 from rest_framework.response import Response
-from .serializers import DocumentSerializer, ProjectSerializer, TaskSerializer, ActSerializer
-from .models import Document, Project, Task, Act
+from .serializers import DocumentSerializer, ProjectSerializer, TaskSerializer, ActSerializer, ActivityLogSerializer
+from .models import Document, Project, Task, Act, ActivityLog
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
@@ -12,7 +12,14 @@ class ProjectViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        from .utils.activity_logger import log_project_created
+        project = serializer.save(created_by=self.request.user)
+        log_project_created(project, self.request.user, self.request)
+    
+    def perform_update(self, serializer):
+        from .utils.activity_logger import log_project_updated
+        project = serializer.save()
+        log_project_updated(project, self.request.user, self.request)
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -29,7 +36,17 @@ class TaskViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-created_at')
     
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        from .utils.activity_logger import log_task_created
+        task = serializer.save(created_by=self.request.user)
+        log_task_created(task, self.request.user, self.request)
+    
+    def perform_update(self, serializer):
+        from .utils.activity_logger import log_task_completed
+        old_status = serializer.instance.status
+        task = serializer.save()
+        # Log when task status changes to completed
+        if old_status != 'completed' and task.status == 'completed':
+            log_task_completed(task, self.request.user, self.request)
 
 
 class TeamViewSet(viewsets.ModelViewSet):
@@ -40,6 +57,62 @@ class TeamViewSet(viewsets.ModelViewSet):
     
     def list(self, request, *args, **kwargs):
         return Response([])
+
+
+class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """Activity log for dashboard - read only"""
+    queryset = ActivityLog.objects.all().order_by('-created_at')
+    serializer_class = ActivityLogSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    
+    def get_queryset(self):
+        queryset = ActivityLog.objects.all()
+        # Optional: filter by user
+        user_id = self.request.query_params.get('user')
+        if user_id:
+            queryset = queryset.filter(user_id=user_id)
+        # Optional: limit results for dashboard
+        limit = self.request.query_params.get('limit')
+        if limit:
+            try:
+                queryset = queryset[:int(limit)]
+            except (ValueError, TypeError):
+                pass
+        return queryset.order_by('-created_at')
+    
+    @action(detail=False, methods=['get'])
+    def recent(self, request):
+        """Get recent activities (last 10 by default)"""
+        limit = int(request.query_params.get('limit', 10))
+        logs = self.get_queryset()[:limit]
+        serializer = self.get_serializer(logs, many=True)
+        return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def upcoming_tasks_view(request):
+    """Get upcoming tasks (pending/in-progress with due dates)"""
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    limit = int(request.query_params.get('limit', 10))
+    days_ahead = int(request.query_params.get('days', 30))
+    
+    now = timezone.now()
+    future_date = now + timedelta(days=days_ahead)
+    
+    tasks = Task.objects.filter(
+        status__in=['pending', 'in_progress'],
+        due_date__isnull=False,
+        due_date__lte=future_date,
+        due_date__gte=now
+    ).order_by('due_date')[:limit]
+    
+    serializer = TaskSerializer(tasks, many=True)
+    return Response(serializer.data)
+
+
 
 
 class ProjectDocumentViewSet(viewsets.ModelViewSet):
@@ -175,6 +248,7 @@ class ActViewSet(viewsets.ModelViewSet):
         import os
         from .utils.document_generator import generate_document
         from .utils.pdf_export import convert_to_pdf
+        from .utils.activity_logger import log_act_created
         import logging
         
         logger = logging.getLogger(__name__)
@@ -234,6 +308,9 @@ class ActViewSet(viewsets.ModelViewSet):
                 act.pdf_file.save(pdf_filename, File(f), save=False)
             with open(zip_path, 'rb') as f:
                 act.zip_file.save(zip_filename, File(f), save=True)
+            
+            # Log activity
+            log_act_created(act, request.user, request)
             
             return Response(self.get_serializer(act, context={'request': request}).data,
                             status=status.HTTP_201_CREATED)

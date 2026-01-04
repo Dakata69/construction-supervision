@@ -185,7 +185,6 @@ export default function Login() {
         // Redirect to home page after successful login
         setTimeout(() => {
           navigate('/');
-          window.location.reload(); // Refresh to update header
         }, 500);
       } else {
         message.error('Неуспешен вход — няма токен');

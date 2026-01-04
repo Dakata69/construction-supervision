@@ -1,7 +1,7 @@
 // frontend/src/pages/Documents.tsx
 import { useEffect, useState, useRef } from 'react';
 import { api } from '../api/client';
-import { Button, Form, Input, DatePicker, message, Card, Space, Divider, Popconfirm, Row, Col, Select, Modal, Switch, Upload } from 'antd';
+import { Button, Form, Input, DatePicker, message, Card, Space, Divider, Popconfirm, Row, Col, Select, Modal, Upload } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import type { UploadFile } from 'antd';
 import dayjs from 'dayjs';
@@ -36,7 +36,6 @@ interface Act15Context extends DocumentContext {
 
 export default function Documents() {
   const [docs, setDocs] = useState<any[]>([]);
-  const [generating, setGenerating] = useState(false);
   const [form7] = Form.useForm();
   const [form14] = Form.useForm();
   const [form15] = Form.useForm();
@@ -44,9 +43,7 @@ export default function Documents() {
   const [projectsLoading, setProjectsLoading] = useState<boolean>(false);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [tick, setTick] = useState(0);
-  const [darkTheme, setDarkTheme] = useState<boolean>(() => {
-    try { return localStorage.getItem('act_dark_theme') === 'true'; } catch(e){ return false; }
-  });
+  // Dark theme removed
 
   const autoTriggered = useRef(false);
 
@@ -102,12 +99,27 @@ export default function Documents() {
   // Delete a document by id
   async function handleDelete(id: number) {
     try {
+      const msgKey = `del-${id}-${Date.now()}`;
+      const warnKey = `${msgKey}-warn`;
+      const slowTimer = setTimeout(() => {
+        message.open({ type: 'loading', content: 'Изтриването отнема повече време от обичайното...', key: msgKey, duration: 0 });
+      }, 5000);
+      const verySlowTimer = setTimeout(() => {
+        message.open({ type: 'warning', content: 'Все още изтриваме документа... моля, изчакайте още малко.', key: warnKey, duration: 0 });
+      }, 15000);
+
       await api.delete(`documents/${id}/`);
+
+      clearTimeout(slowTimer);
+      clearTimeout(verySlowTimer);
+      message.destroy(msgKey);
+      message.destroy(warnKey);
       message.success('Документът е изтрит');
       // Remove from local state without extra request
       setDocs(prev => prev.filter((d: any) => d.id !== id));
     } catch (err) {
       console.error('Error deleting document:', err);
+      message.destroy();
       message.error('Грешка при изтриване на документа');
     }
   }
@@ -123,6 +135,14 @@ export default function Documents() {
       }
       
       setUploading(true);
+      const msgKey = `upload-${Date.now()}`;
+      const warnKey = `${msgKey}-warn`;
+      const slowTimer = setTimeout(() => {
+        message.open({ type: 'loading', content: 'Качването отнема повече време от обичайното...', key: msgKey, duration: 0 });
+      }, 5000);
+      const verySlowTimer = setTimeout(() => {
+        message.open({ type: 'warning', content: 'Все още качваме документа... моля, изчакайте още малко.', key: warnKey, duration: 0 });
+      }, 15000);
 
       const formData = new FormData();
       formData.append('title', values.title);
@@ -134,6 +154,10 @@ export default function Documents() {
         },
       });
 
+      clearTimeout(slowTimer);
+      clearTimeout(verySlowTimer);
+      message.destroy(msgKey);
+      message.destroy(warnKey);
       message.success('Документът е качен успешно');
       setDocs(prev => [response.data, ...prev]);
       setUploadModalVisible(false);
@@ -141,6 +165,7 @@ export default function Documents() {
       setFileListDocx([]);
     } catch (err: any) {
       console.error('Error uploading document:', err);
+      message.destroy();
       message.error(err.response?.data?.error || 'Грешка при качване на документа');
     } finally {
       setUploading(false);
@@ -302,7 +327,18 @@ export default function Documents() {
 
   async function generateDocument(template: string, values: any) {
     try {
-      setGenerating(true);
+      const slowThresholdMs = 5000;
+      const verySlowThresholdMs = 15000;
+      const msgKey = `doc-gen-${Date.now()}`;
+      const warnKey = `${msgKey}-warn`;
+
+      const slowTimer = setTimeout(() => {
+        message.open({ type: 'loading', content: 'Генерирането отнема повече време от обичайното...', key: msgKey, duration: 0 });
+      }, slowThresholdMs);
+
+      const verySlowTimer = setTimeout(() => {
+        message.open({ type: 'warning', content: 'Все още подготвяме документа. Може да отнеме още малко време...', key: warnKey, duration: 0 });
+      }, verySlowThresholdMs);
       
       // Format dates only if provided
       let formattedValues: any = { ...values };
@@ -336,6 +372,10 @@ export default function Documents() {
         context: formattedValues,
       });
 
+      clearTimeout(slowTimer);
+      clearTimeout(verySlowTimer);
+      message.destroy(msgKey);
+      message.destroy(warnKey);
       message.success('Документът е генериран успешно');
 
       // Reload documents list
@@ -346,6 +386,7 @@ export default function Documents() {
       // Don't automatically open/download the document
       // User can download from the documents list if needed
     } catch (error: any) {
+      message.destroy();
       const detail = error?.response?.data?.error || error?.message || '';
       const status = error?.response?.status;
       if (status === 401) {
@@ -357,7 +398,7 @@ export default function Documents() {
       }
       console.error('Generate error:', error?.response?.data || error);
     } finally {
-      setGenerating(false);
+      // no-op
     }
   }
 
@@ -422,15 +463,7 @@ export default function Documents() {
             />
           </Space>
         </Card>
-        <Space style={{ width:'100%', justifyContent:'space-between', alignItems: 'center' }}>
-          <div>
-            <Switch
-              checked={darkTheme}
-              onChange={(v) => { setDarkTheme(v); try { localStorage.setItem('act_dark_theme', String(v)); } catch(e){} }}
-            /> <span style={{ marginLeft:8 }}>Dark theme</span>
-          </div>
-        </Space>
-        <Row gutter={[16, 16]} className={darkTheme ? 'act-cards dark' : 'act-cards'}>
+        <Row gutter={[16, 16]} className={'act-cards'}>
           <Col xs={24} md={8}>
             <Card title="Акт 7" bordered style={{ height: '100%' }} headStyle={{ textAlign: 'center', fontSize: '20px', fontWeight: 600 }}>
               <Form
@@ -491,7 +524,7 @@ export default function Documents() {
                     <Input.TextArea rows={2} placeholder="Бетониране на фундаменти, монтаж на плоча..." />
                   </Form.Item>
 
-                  <Button type="primary" htmlType="submit" loading={generating}>
+                  <Button type="primary" htmlType="submit">
                     Генерирай Акт 7
                   </Button>
                   {(() => {
@@ -552,7 +585,7 @@ export default function Documents() {
                     <Input.TextArea rows={2} />
                   </Form.Item>
                   
-                  <Button type="primary" htmlType="submit" loading={generating}>
+                  <Button type="primary" htmlType="submit">
                     Генерирай Акт 14
                   </Button>
                   {(() => {
@@ -613,7 +646,7 @@ export default function Documents() {
                     <Input.TextArea rows={2} />
                   </Form.Item>
                   
-                  <Button type="primary" htmlType="submit" loading={generating}>
+                  <Button type="primary" htmlType="submit">
                     Генерирай Акт 15
                   </Button>
                   {(() => {

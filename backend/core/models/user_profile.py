@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 class UserProfile(models.Model):
     """Extended user profile for role-based access"""
     ROLE_CHOICES = [
+        ('client', _('Client - View Own Projects Only')),
         ('privileged', _('Privileged User')),
         ('admin', _('Admin')),
     ]
@@ -20,6 +21,15 @@ class UserProfile(models.Model):
         choices=ROLE_CHOICES,
         default='privileged'
     )
+    
+    # For clients - link to specific projects they can view
+    accessible_projects = models.ManyToManyField(
+        'Project',
+        blank=True,
+        related_name='client_users',
+        help_text=_('Projects this client can access')
+    )
+    
     created_at = models.DateTimeField(_('Created At'), auto_now_add=True)
     updated_at = models.DateTimeField(_('Updated At'), auto_now=True)
     
@@ -33,4 +43,8 @@ class UserProfile(models.Model):
     def can_edit(self):
         """Check if user can edit projects (admin only)"""
         return self.role == 'admin'
+    
+    def is_client(self):
+        """Check if user is a client"""
+        return self.role == 'client'
 
