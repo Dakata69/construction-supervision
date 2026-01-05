@@ -235,7 +235,12 @@ const TemplateLibrary: React.FC = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <h1>Библиотека с шаблони</h1>
+      <h1 style={{
+        margin: '0 0 24px 0',
+        fontSize: '24px',
+        fontWeight: 600,
+        color: 'rgba(0, 0, 0, 0.85)'
+      }}>Библиотека с шаблони</h1>
 
       <Tabs
         defaultActiveKey="templates"

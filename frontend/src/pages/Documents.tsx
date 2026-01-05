@@ -436,8 +436,12 @@ export default function Documents() {
 
   return (
     <div className="documents-page" style={{ padding: '24px' }}>
-      <h2>Документи</h2>
-      <Divider />
+      <h1 style={{
+        margin: '0 0 24px 0',
+        fontSize: '24px',
+        fontWeight: 600,
+        color: 'rgba(0, 0, 0, 0.85)'
+      }}>Документи</h1>
       
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         <Card bordered>

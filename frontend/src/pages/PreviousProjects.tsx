@@ -153,9 +153,9 @@ const PreviousProjects = () => {
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-        <Title level={2} style={{ margin: 0 }}>
+        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 600, color: 'rgba(0, 0, 0, 0.85)' }}>
           Завършени проекти
-        </Title>
+        </h1>
         {canModifyProjects && (
           <Button 
             type="primary" 
