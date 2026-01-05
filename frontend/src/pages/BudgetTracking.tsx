@@ -85,8 +85,9 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
       message.success('Разходът е добавен успешно');
       setExpenseModalOpen(false);
       expenseForm.resetFields();
-    } catch (error) {
-      message.error('Грешка при добавяне на разход');
+    } catch (error: any) {
+      console.error('Error details:', error.response?.data);
+      message.error(error.response?.data?.detail || 'Грешка при добавяне на разход');
     }
   };
 
@@ -332,18 +333,28 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item
-            label="Сума"
-            name="amount"
-            rules={[{ required: true, message: 'Въведете сума' }]}
-          >
-            <InputNumber
-              style={{ width: '100%' }}
-              min={0}
-              precision={2}
-              addonAfter="лв."
-            />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={16}>
+              <Form.Item
+                label="Сума"
+                name="amount"
+                rules={[{ required: true, message: 'Въведете сума' }]}
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={0}
+                  precision={2}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                label="Валута"
+              >
+                <Input disabled value={budget?.currency || 'BGN'} />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item label="Допълнителни бележки" name="notes">
             <Input.TextArea rows={2} />
           </Form.Item>

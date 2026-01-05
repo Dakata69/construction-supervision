@@ -171,13 +171,14 @@ class ActivityLogSerializer(serializers.ModelSerializer):
 class BudgetExpenseSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.username', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
+    currency = serializers.CharField(source='budget.currency', read_only=True)
     
     class Meta:
         model = BudgetExpense
         fields = ['id', 'budget', 'category', 'category_display', 'description', 
-                  'amount', 'date', 'invoice_number', 'vendor', 'notes', 
+                  'amount', 'date', 'invoice_number', 'vendor', 'notes', 'currency',
                   'created_by', 'created_by_name', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by', 'currency']
 
 
 class ProjectBudgetSerializer(serializers.ModelSerializer):

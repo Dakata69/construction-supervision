@@ -81,7 +81,12 @@ const Analytics: React.FC = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <h1>Аналитична табло</h1>
+      <h1 style={{
+        marginBottom: '24px',
+        fontSize: '24px',
+        fontWeight: 600,
+        color: 'rgba(0, 0, 0, 0.85)'
+      }}>Аналитично табло</h1>
 
       {/* Key Metrics */}
       <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
