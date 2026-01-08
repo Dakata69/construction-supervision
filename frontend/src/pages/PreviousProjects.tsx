@@ -153,7 +153,7 @@ const PreviousProjects = () => {
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 600, color: 'rgba(0, 0, 0, 0.85)' }}>
+        <h1 style={{ margin: 0 }}>
           Завършени проекти
         </h1>
         {canModifyProjects && (

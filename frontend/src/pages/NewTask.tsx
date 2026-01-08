@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Form, Input, Button, Select, DatePicker, message } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
@@ -9,6 +9,21 @@ const NewTask: React.FC = () => {
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const [form] = Form.useForm();
+  const [users, setUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch users for assignee select
+    api.get('users/')
+      .then((res) => {
+        const data = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray((res.data as any)?.results)
+            ? (res.data as any).results
+            : res.data;
+        setUsers(data || []);
+      })
+      .catch(() => setUsers([]));
+  }, []);
 
   const handleSubmit = async (values: any) => {
     try {
@@ -18,6 +33,7 @@ const NewTask: React.FC = () => {
         description: values.description || '',
         status: values.status || 'pending',
         priority: values.priority || 'medium',
+        assigned_to_name: values.assigned_to || '',
         // Backend expects DateTime; send end-of-day ISO when a date is chosen
         due_date: values.due_date ? values.due_date.endOf('day').toISOString() : null,
       };
@@ -88,6 +104,15 @@ const NewTask: React.FC = () => {
             <Select.Option value="high">Висок</Select.Option>
             <Select.Option value="urgent">Спешен</Select.Option>
           </Select>
+        </Form.Item>
+
+        <Form.Item
+          label="Изпълнител"
+          name="assigned_to"
+        >
+          <Input
+            placeholder="Въведете име на потребител"
+          />
         </Form.Item>
 
         <Form.Item

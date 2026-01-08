@@ -56,6 +56,28 @@ const statusLabels: Record<string, string> = {
   cancelled: 'Отменен',
 };
 
+// Task-level mappings
+const taskStatusColors = {
+  pending: 'blue',
+  in_progress: 'green',
+  completed: 'purple',
+  blocked: 'red',
+} as const;
+
+const taskStatusLabels: Record<string, string> = {
+  pending: 'За изпълнение',
+  in_progress: 'В процес',
+  completed: 'Завършена',
+  blocked: 'Блокирана',
+};
+
+const taskPriorityLabels: Record<string, string> = {
+  low: 'Нисък',
+  medium: 'Среден',
+  high: 'Висок',
+  urgent: 'Спешен',
+};
+
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -275,25 +297,65 @@ const ProjectDetail: React.FC = () => {
       title: 'Статус',
       dataIndex: 'status',
       key: 'status',
-      render: (status: keyof typeof statusColors) => (
-        <Badge color={statusColors[status]} text={status} />
+      render: (status: keyof typeof taskStatusColors) => (
+        <Badge color={taskStatusColors[status]} text={taskStatusLabels[status] || status} />
       ),
     },
     {
       title: 'Приоритет',
       dataIndex: 'priority',
       key: 'priority',
+      render: (priority: string) => taskPriorityLabels[priority] || priority,
     },
     {
       title: 'Изпълнител',
-      dataIndex: 'assigned_to',
-      key: 'assigned_to',
-      render: (user: any) => user?.username,
+      dataIndex: 'assigned_to_name',
+      key: 'assigned_to_name',
+      render: (name: string | null) => name || '—',
     },
     {
       title: 'Краен срок',
       dataIndex: 'due_date',
       key: 'due_date',
+      render: (date: string) => (date ? dayjs(date).format('DD.MM.YYYY') : '—'),
+    },
+    {
+      title: 'Действия',
+      key: 'actions',
+      render: (_: unknown, record: any) => (
+        <Space>
+          {canEdit && (
+            <Button 
+              type="link"
+              size="small"
+              onClick={() => navigate(`/projects/${id}/tasks/${record.id}/edit`)}
+            >
+              Редактирай
+            </Button>
+          )}
+          {canEdit && (
+            <Popconfirm
+              title="Сигурни ли сте, че искате да изтриете тази задача?"
+              onConfirm={async () => {
+                try {
+                  await api.delete(`/tasks/${record.id}/`);
+                  message.success('Задачата е изтрита успешно');
+                  window.location.reload();
+                } catch (error) {
+                  message.error('Грешка при изтриване на задача');
+                }
+              }}
+              okText="Да"
+              cancelText="Отказ"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="link" danger size="small">
+                Изтрий
+              </Button>
+            </Popconfirm>
+          )}
+        </Space>
+      ),
     },
   ];
 

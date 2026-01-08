@@ -12,6 +12,7 @@ import ProjectList from './pages/ProjectList';
 import ProjectDetail from './pages/ProjectDetail';
 import NewProject from './pages/NewProject';
 import NewTask from './pages/NewTask';
+import EditTask from './pages/EditTask';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import Documents from './pages/Documents';
@@ -20,7 +21,9 @@ import GenerateAct from './pages/GenerateAct';
 import Analytics from './pages/Analytics';
 import BudgetTracking from './pages/BudgetTracking';
 import WeatherLogging from './pages/WeatherLogging';
-import TemplateLibrary from './pages/TemplateLibrary';
+import PasswordReset from './pages/PasswordReset';
+import UserManagement from './pages/UserManagement';
+import Admin from './pages/Admin';
 import Header from './components/Header';
 import AnimatedCityBackground from './components/AnimatedCityBackground';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -106,7 +109,14 @@ export default function App() {
                   <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/login" element={<Login />} />
-                    <Route path="/previous-projects" element={<PreviousProjects />} />
+                    <Route 
+                      path="/previous-projects" 
+                      element={
+                        <RoleProtectedRoute requireEdit={true}>
+                          <PreviousProjects />
+                        </RoleProtectedRoute>
+                      } 
+                    />
                     <Route 
                       path="/projects" 
                       element={
@@ -140,6 +150,14 @@ export default function App() {
                       } 
                     />
                     <Route 
+                      path="/projects/:projectId/tasks/:taskId/edit" 
+                      element={
+                        <ProtectedRoute>
+                          <EditTask />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
                       path="/projects/:projectId/acts/generate" 
                       element={
                         <ProtectedRoute>
@@ -159,7 +177,7 @@ export default function App() {
                       path="/admin" 
                       element={
                         <RoleProtectedRoute requireEdit={true}>
-                          <AdminDashboard />
+                          <Admin />
                         </RoleProtectedRoute>
                       } 
                     />
@@ -172,12 +190,8 @@ export default function App() {
                       } 
                     />
                     <Route 
-                      path="/templates" 
-                      element={
-                        <RoleProtectedRoute requireEdit={true}>
-                          <TemplateLibrary />
-                        </RoleProtectedRoute>
-                      } 
+                      path="/password-reset/:token" 
+                      element={<PasswordReset />} 
                     />
                   </Routes>
                 </Content>

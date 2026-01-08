@@ -51,17 +51,29 @@ const WeatherLogging: React.FC<WeatherLoggingProps> = ({ projectId }) => {
 
   const handleCreateWeatherLog = async (values: any) => {
     try {
-      await createWeatherLog.mutateAsync({
+      const { date, ...otherValues } = values;
+      const weatherData = {
         project: projectId,
-        date: values.date.format('YYYY-MM-DD'),
-        ...values,
-      });
+        date: date.format('YYYY-MM-DD'),
+        ...otherValues,
+      };
+      
+      await createWeatherLog.mutateAsync(weatherData);
       message.success('Метеорологичният запис е добавен успешно');
       setModalOpen(false);
       form.resetFields();
     } catch (error: any) {
+      console.error('Full error:', error);
+      console.error('Error response:', error.response?.data);
+      
       if (error.response?.data?.date) {
         message.error('Вече съществува запис за тази дата');
+      } else if (error.response?.data) {
+        // Show detailed backend error if available
+        const errorMsg = Object.entries(error.response.data)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join('; ') || 'Грешка при добавяне на запис';
+        message.error(errorMsg);
       } else {
         message.error('Грешка при добавяне на запис');
       }

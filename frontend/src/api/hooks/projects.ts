@@ -5,7 +5,7 @@ import { api } from '../client';
 export const useProjects = () => {
   return useQuery({
     queryKey: ['projects'],
-    queryFn: () => api.get('/projects').then((res) => {
+    queryFn: () => api.get('projects/').then((res) => {
       const data = res.data;
       if (Array.isArray(data)) return data;
       if (data && Array.isArray(data.results)) return data.results;

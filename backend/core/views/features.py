@@ -3,6 +3,7 @@ from rest_framework.decorators import api_view, action, permission_classes
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Sum, Count, Q, Avg
+from decimal import Decimal
 from django.utils import timezone
 from datetime import timedelta
 from core.models import (
@@ -34,11 +35,32 @@ class ProjectBudgetViewSet(viewsets.ModelViewSet):
         """Get budget summary with category breakdown"""
         budget = self.get_object()
         
-        # Category breakdown
-        category_breakdown = budget.expenses.values('category').annotate(
-            total=Sum('amount'),
-            count=Count('id')
-        ).order_by('-total')
+        # Category breakdown with currency conversion into budget currency
+        rate = Decimal('1.96')  # 1 EUR = 1.96 BGN
+        cat_totals = {}
+        for exp in budget.expenses.all():
+            amt = Decimal(exp.amount)
+            # convert to budget currency
+            if exp.expense_currency == budget.currency:
+                conv = amt
+            else:
+                if budget.currency == 'BGN' and exp.expense_currency == 'EUR':
+                    conv = amt * rate
+                elif budget.currency == 'EUR' and exp.expense_currency == 'BGN':
+                    conv = amt / rate
+                else:
+                    conv = amt
+            entry = cat_totals.get(exp.category, {'category': exp.category, 'total': Decimal('0'), 'count': 0})
+            entry['total'] += conv
+            entry['count'] += 1
+            cat_totals[exp.category] = entry
+        category_breakdown = sorted([
+            {
+                'category': k,
+                'total': float(v['total']),
+                'count': v['count']
+            } for k, v in cat_totals.items()
+        ], key=lambda x: x['total'], reverse=True)
         
         return Response({
             'initial_budget': budget.initial_budget,
@@ -55,7 +77,7 @@ class BudgetExpenseViewSet(viewsets.ModelViewSet):
     """Budget expense management"""
     queryset = BudgetExpense.objects.all()
     serializer_class = BudgetExpenseSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         queryset = BudgetExpense.objects.all()
@@ -130,7 +152,7 @@ class WeatherLogViewSet(viewsets.ModelViewSet):
     """Weather log management"""
     queryset = WeatherLog.objects.all()
     serializer_class = WeatherLogSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         queryset = WeatherLog.objects.all()
@@ -138,6 +160,30 @@ class WeatherLogViewSet(viewsets.ModelViewSet):
         if project_id:
             queryset = queryset.filter(project_id=project_id)
         return queryset.order_by('-date')
+    
+    def create(self, request, *args, **kwargs):
+        """Override create to use update_or_create instead of create"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Extract project and date as unique key
+        project_id = serializer.validated_data.get('project').id
+        date = serializer.validated_data.get('date')
+        
+        # Use update_or_create to avoid unique constraint errors
+        weather_log, created = WeatherLog.objects.update_or_create(
+            project_id=project_id,
+            date=date,
+            defaults=serializer.validated_data
+        )
+        
+        response_serializer = self.get_serializer(weather_log)
+        headers = self.get_success_headers(response_serializer.data)
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+            headers=headers
+        )
 
 
 class ReminderViewSet(viewsets.ModelViewSet):
@@ -189,13 +235,28 @@ def analytics_dashboard_view(request):
     completed_tasks = Task.objects.filter(status='completed').count()
     overdue_tasks = Task.objects.filter(
         status__in=['pending', 'in_progress'],
-        due_date__lt=timezone.now()
+        due_date__lt=timezone.now().date()
     ).count()
     
     # Budget stats
     budgets = ProjectBudget.objects.all()
-    total_budget = budgets.aggregate(total=Sum('initial_budget'))['total'] or 0
-    total_spent = BudgetExpense.objects.aggregate(total=Sum('amount'))['total'] or 0
+    rate = Decimal('1.96')
+    # Normalize analytics to BGN
+    total_budget = Decimal('0')
+    for b in budgets:
+        ib = Decimal(b.initial_budget)
+        if b.currency == 'EUR':
+            total_budget += (ib * rate)
+        else:
+            total_budget += ib
+    # Sum all expenses converted to BGN based on their own currency
+    total_spent = Decimal('0')
+    for e in BudgetExpense.objects.all():
+        amt = Decimal(e.amount)
+        if e.expense_currency == 'EUR':
+            total_spent += (amt * rate)
+        else:
+            total_spent += amt
     over_budget_count = sum(1 for b in budgets if b.is_over_budget)
     
     # Recent activity
@@ -204,9 +265,20 @@ def analytics_dashboard_view(request):
     )
     
     # Top expense categories
-    top_categories = BudgetExpense.objects.values('category').annotate(
-        total=Sum('amount')
-    ).order_by('-total')[:5]
+    # Compute top categories with conversion to BGN
+    cat_total_map = {}
+    for e in BudgetExpense.objects.all():
+        amt = Decimal(e.amount)
+        amt_bgn = (amt * rate) if e.expense_currency == 'EUR' else amt
+        cat_total_map[e.category] = cat_total_map.get(e.category, Decimal('0')) + amt_bgn
+    top_categories = sorted(
+        (
+            {'category': k, 'total': float(v)}
+            for k, v in cat_total_map.items()
+        ),
+        key=lambda x: x['total'],
+        reverse=True
+    )[:5]
     
     return Response({
         'projects': {
@@ -224,7 +296,9 @@ def analytics_dashboard_view(request):
             'total_budget': float(total_budget),
             'total_spent': float(total_spent),
             'remaining': float(total_budget - total_spent),
-            'over_budget_projects': over_budget_count
+            'over_budget_projects': over_budget_count,
+            # normalized to BGN
+            'currency': 'BGN'
         },
         'top_expense_categories': list(top_categories)
     })
@@ -263,37 +337,51 @@ def fetch_weather_view(request):
 @permission_classes([IsAuthenticatedOrReadOnly])
 def validate_bulgarian_id_view(request):
     """Validate Bulgarian identification numbers"""
-    from core.utils.bulgarian_validators import (
-        validate_bulstat, validate_vat_number, validate_personal_id
-    )
-    
-    id_type = request.data.get('type')  # 'bulstat', 'vat', 'egn'
-    value = request.data.get('value')
-    
-    if not id_type or not value:
-        return Response(
-            {'error': 'type and value required'},
-            status=status.HTTP_400_BAD_REQUEST
+    try:
+        from core.utils.bulgarian_validators import (
+            validate_bulstat, validate_vat_number, validate_personal_id
         )
-    
-    validators = {
-        'bulstat': validate_bulstat,
-        'vat': validate_vat_number,
-        'egn': validate_personal_id
-    }
-    
-    validator = validators.get(id_type)
-    if not validator:
+        
+        id_type = request.data.get('type')  # 'bulstat', 'vat', 'egn'
+        value = request.data.get('value')
+        
+        if not id_type or not value:
+            return Response(
+                {'error': 'type and value required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        validators = {
+            'bulstat': validate_bulstat,
+            'vat': validate_vat_number,
+            'egn': validate_personal_id
+        }
+        
+        validator = validators.get(id_type)
+        if not validator:
+            return Response(
+                {'error': f'Invalid type. Use: {", ".join(validators.keys())}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        is_valid, message = validator(value)
+        
+        return Response({
+            'valid': is_valid,
+            'message': message,
+            'type': id_type,
+            'value': value
+        })
+    except Exception as e:
+        import traceback
+        error_msg = str(e)
+        error_trace = traceback.format_exc()
+        print(f"Error in validate_bulgarian_id_view: {error_msg}")
+        print(error_trace)
         return Response(
-            {'error': f'Invalid type. Use: {", ".join(validators.keys())}'},
-            status=status.HTTP_400_BAD_REQUEST
+            {
+                'error': 'Error validating ID',
+                'details': error_msg
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-    
-    is_valid, message = validator(value)
-    
-    return Response({
-        'valid': is_valid,
-        'message': message,
-        'type': id_type,
-        'value': value
-    })

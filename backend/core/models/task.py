@@ -41,7 +41,14 @@ class Task(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
         related_name='assigned_tasks'
+    )
+    assigned_to_name = models.CharField(
+        _('Assigned To Name'),
+        max_length=200,
+        blank=True,
+        default=''
     )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

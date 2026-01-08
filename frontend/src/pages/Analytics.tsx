@@ -13,8 +13,53 @@ import 'dayjs/locale/bg';
 
 dayjs.locale('bg');
 
+// Localized labels for expense categories
+const CATEGORY_LABELS: Record<string, string> = {
+  materials: 'Материали',
+  labor: 'Работна сила',
+  equipment: 'Оборудване',
+  subcontractors: 'Подизпълнители',
+  permits: 'Разрешителни',
+  transport: 'Транспорт',
+  utilities: 'Комунални услуги',
+  insurance: 'Застраховка',
+  other: 'Други',
+};
+
 const Analytics: React.FC = () => {
   const { data, isLoading } = useAnalyticsDashboard();
+  const getCurrencySymbol = (code?: string) => {
+    switch (code) {
+      case 'EUR':
+        return 'EUR (€)';
+      case 'BGN':
+      default:
+        return 'BGN (лв.)';
+    }
+  };
+
+  // Exchange rate: 1 EUR = 1.96 BGN (approximate)
+  const EUR_TO_BGN_RATE = 1.96;
+
+  const convertToEUR = (amountBGN: number): number => {
+    return amountBGN / EUR_TO_BGN_RATE;
+  };
+
+  const convertToBGN = (amountEUR: number): number => {
+    return amountEUR * EUR_TO_BGN_RATE;
+  };
+
+  const formatDualCurrency = (amount: number, curr: string = 'BGN'): string => {
+    if (curr === 'EUR') {
+      // Amount is in EUR, show EUR first, then BGN
+      const bgn = convertToBGN(amount).toFixed(2);
+      return `${amount.toFixed(2)} € / ${bgn} лв.`;
+    } else {
+      // Amount is in BGN (default), show EUR first, then BGN
+      const eur = convertToEUR(amount).toFixed(2);
+      return `${eur} € / ${amount.toFixed(2)} лв.`;
+    }
+  };
 
   if (isLoading || !data) {
     return (
@@ -23,6 +68,8 @@ const Analytics: React.FC = () => {
       </div>
     );
   }
+
+  const currency = (data as any).budget?.currency || 'BGN';
 
   const columns = [
     {
@@ -50,26 +97,36 @@ const Analytics: React.FC = () => {
       title: 'Категория',
       dataIndex: 'category',
       key: 'category',
+      render: (category: string) => CATEGORY_LABELS[category] ?? category,
     },
     {
       title: 'Обща сума',
       dataIndex: 'total',
       key: 'total',
-      render: (total: number) => `${total.toFixed(2)} лв.`,
+      render: (total: number) => formatDualCurrency(total, currency),
     },
     {
       title: 'Процент',
+      width: 220,
       key: 'percentage',
       render: (_: any, record: any) => {
-        const percentage = data.budget.total_spent > 0
-          ? (record.total / data.budget.total_spent) * 100
+        // Calculate category percentage relative to total budget (not total spent)
+        const denominator = data.budget.total_budget;
+        const percentage = denominator > 0
+          ? (record.total / denominator) * 100
           : 0;
+        const rounded = Math.round(percentage);
         return (
-          <Progress
-            percent={Math.round(percentage)}
-            size="small"
-            status={percentage > 50 ? 'exception' : 'active'}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+            <span style={{ minWidth: 46, fontVariantNumeric: 'tabular-nums' }}>{rounded}%</span>
+            <Progress
+              percent={rounded}
+              size="small"
+              style={{ flex: 1, minWidth: 140, marginBottom: 0 }}
+              status={percentage > 90 ? 'exception' : percentage > 60 ? 'normal' : 'success'}
+              strokeColor={percentage > 90 ? '#cf1322' : percentage > 60 ? '#faad14' : '#52c41a'}
+            />
+          </div>
         );
       },
     },
@@ -81,12 +138,7 @@ const Analytics: React.FC = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <h1 style={{
-        marginBottom: '24px',
-        fontSize: '24px',
-        fontWeight: 600,
-        color: 'rgba(0, 0, 0, 0.85)'
-      }}>Аналитично табло</h1>
+      <h1 style={{ margin: 0, marginBottom: '24px' }}>Аналитично табло</h1>
 
       {/* Key Metrics */}
       <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
@@ -136,10 +188,8 @@ const Analytics: React.FC = () => {
           <Card>
             <Statistic
               title="Бюджет"
-              value={data.budget.total_spent}
+              value={formatDualCurrency(data.budget.total_spent, currency)}
               prefix={<DollarOutlined />}
-              suffix={`/ ${data.budget.total_budget.toFixed(0)} лв.`}
-              precision={2}
             />
             <Progress
               percent={Math.round(budgetUsagePercent)}
@@ -201,26 +251,20 @@ const Analytics: React.FC = () => {
               <Col xs={24} sm={8}>
                 <Statistic
                   title="Общ бюджет"
-                  value={data.budget.total_budget}
-                  precision={2}
-                  suffix="лв."
+                  value={formatDualCurrency(data.budget.total_budget, currency)}
                 />
               </Col>
               <Col xs={24} sm={8}>
                 <Statistic
                   title="Изразходвано"
-                  value={data.budget.total_spent}
-                  precision={2}
-                  suffix="лв."
+                  value={formatDualCurrency(data.budget.total_spent, currency)}
                   valueStyle={{ color: budgetUsagePercent > 100 ? '#cf1322' : '#3f8600' }}
                 />
               </Col>
               <Col xs={24} sm={8}>
                 <Statistic
                   title="Остатък"
-                  value={data.budget.remaining}
-                  precision={2}
-                  suffix="лв."
+                  value={formatDualCurrency(data.budget.remaining, currency)}
                   valueStyle={{ color: data.budget.remaining < 0 ? '#cf1322' : '#3f8600' }}
                 />
               </Col>

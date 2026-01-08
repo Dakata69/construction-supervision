@@ -24,6 +24,7 @@ export interface AnalyticsDashboard {
     total_spent: number;
     remaining: number;
     over_budget_projects: number;
+    currency: string;
   };
   top_expense_categories: Array<{
     category: string;
@@ -57,6 +58,7 @@ export interface BudgetExpense {
   date: string;
   invoice_number: string;
   vendor: string;
+  expense_currency: string;
   notes: string;
   created_by: number | null;
   created_by_name: string | null;
@@ -142,12 +144,52 @@ export const useCreateBudget = () => {
   });
 };
 
+export const useUpdateBudget = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<ProjectBudget> }) => {
+      const response = await api.patch(`/budgets/${id}/`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+    },
+  });
+};
+
 export const useCreateExpense = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: Partial<BudgetExpense>) => {
       const response = await api.post('/expenses/', data);
       return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    },
+  });
+};
+
+export const useUpdateExpense = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<BudgetExpense> }) => {
+      const response = await api.patch(`/expenses/${id}/`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    },
+  });
+};
+
+export const useDeleteExpense = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/expenses/${id}/`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budgets'] });

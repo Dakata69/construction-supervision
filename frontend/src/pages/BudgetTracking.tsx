@@ -22,8 +22,11 @@ import {
   DollarOutlined,
   WarningOutlined,
   CheckCircleOutlined,
+  EditOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
-import { useProjectBudget, useCreateBudget, useCreateExpense, useExpenses } from '../api/hooks/useFeatures';
+import { useProjectBudget, useCreateBudget, useUpdateBudget, useCreateExpense, useUpdateExpense, useDeleteExpense, useExpenses } from '../api/hooks/useFeatures';
+import { useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import 'dayjs/locale/bg';
 
@@ -37,7 +40,7 @@ const EXPENSE_CATEGORIES = [
   { value: 'materials', label: 'Материали' },
   { value: 'labor', label: 'Работна сила' },
   { value: 'equipment', label: 'Оборудване' },
-  { value: 'subcontractor', label: 'Подизпълнители' },
+  { value: 'subcontractors', label: 'Подизпълнители' },
   { value: 'permits', label: 'Разрешителни' },
   { value: 'transport', label: 'Транспорт' },
   { value: 'utilities', label: 'Комунални услуги' },
@@ -48,25 +51,89 @@ const EXPENSE_CATEGORIES = [
 const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
   const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState<number | null>(null);
   const [budgetForm] = Form.useForm();
   const [expenseForm] = Form.useForm();
+  const queryClient = useQueryClient();
 
   const { data: budget, isLoading } = useProjectBudget(projectId);
   const { data: expenses = [] } = useExpenses(budget?.id, projectId);
   const createBudget = useCreateBudget();
+  const updateBudget = useUpdateBudget();
   const createExpense = useCreateExpense();
+  const updateExpense = useUpdateExpense();
+  const deleteExpense = useDeleteExpense();
+
+  const getCurrencySymbol = (code?: string) => {
+    switch (code) {
+      case 'EUR':
+        return 'EUR (€)';
+      case 'BGN':
+      default:
+        return 'BGN (лв.)';
+    }
+  };
+
+  // Exchange rate: 1 EUR = 1.96 BGN (approximate)
+  const EUR_TO_BGN_RATE = 1.96;
+
+  const convertToEUR = (amountBGN: number): number => {
+    return amountBGN / EUR_TO_BGN_RATE;
+  };
+
+  const convertToBGN = (amountEUR: number): number => {
+    return amountEUR * EUR_TO_BGN_RATE;
+  };
+
+  const formatDualCurrency = (amount: string | number, currency: string = 'BGN'): string => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (currency === 'EUR') {
+      // Amount is in EUR, show EUR first, then BGN
+      const bgn = convertToBGN(num).toFixed(2);
+      return `${num.toFixed(2)} € / ${bgn} лв.`;
+    } else {
+      // Amount is in BGN (default), show EUR first, then BGN
+      const eur = convertToEUR(num).toFixed(2);
+      return `${eur} € / ${num.toFixed(2)} лв.`;
+    }
+  };
 
   const handleCreateBudget = async (values: any) => {
     try {
-      await createBudget.mutateAsync({
-        project: projectId,
-        ...values,
-      });
-      message.success('Бюджетът е създаден успешно');
+      if (budget?.id) {
+        await updateBudget.mutateAsync({ id: budget.id, data: values });
+        message.success('Бюджетът е обновен успешно');
+      } else {
+        await createBudget.mutateAsync({
+          project: projectId,
+          ...values,
+        });
+        message.success('Бюджетът е създаден успешно');
+      }
+      // Ensure UI refreshes with the latest values
+      await queryClient.invalidateQueries({ queryKey: ['budgets'], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ['expenses'], exact: false });
+      // Wait for data to reload
+      await queryClient.refetchQueries({ queryKey: ['budgets', 'project', projectId] });
       setBudgetModalOpen(false);
       budgetForm.resetFields();
-    } catch (error) {
-      message.error('Грешка при създаване на бюджет');
+    } catch (error: any) {
+      const data = error?.response?.data;
+      const detail: string | undefined = data?.detail;
+      const projectErr: string | string[] | undefined = data?.project;
+      if (projectErr) {
+        const msg = Array.isArray(projectErr) ? projectErr[0] : projectErr;
+        message.error(msg || 'Грешка при създаване на бюджет');
+      } else if (detail) {
+        // Common cases: authentication required or generic error
+        if (/credentials|authenticated|authorization|permission/i.test(detail)) {
+          message.error('Необходим е вход в системата');
+        } else {
+          message.error(detail);
+        }
+      } else {
+        message.error('Грешка: неуспешно записване на бюджета');
+      }
     }
   };
 
@@ -77,18 +144,94 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
     }
 
     try {
-      await createExpense.mutateAsync({
+      // Client-side guard against exceeding budget
+      const amountNum = Number(values.amount);
+      const remainingNum = Number(budget.remaining_budget);
+      if (!editingExpenseId && remainingNum <= 0) {
+        message.error('Достигнат е лимитът на бюджета');
+        return;
+      }
+      if (!editingExpenseId && amountNum > remainingNum) {
+        message.error('Достигнат е лимитът на бюджета');
+        return;
+      }
+
+      const { date, ...otherValues } = values;
+      const expenseData = {
         budget: budget.id,
-        date: values.date.format('YYYY-MM-DD'),
-        ...values,
-      });
-      message.success('Разходът е добавен успешно');
+        date: date.format('YYYY-MM-DD'),
+        ...otherValues,
+      };
+
+      if (editingExpenseId) {
+        await updateExpense.mutateAsync({
+          id: editingExpenseId,
+          data: expenseData,
+        });
+        message.success('Разходът е обновен успешно');
+      } else {
+        await createExpense.mutateAsync(expenseData);
+        message.success('Разходът е добавен успешно');
+      }
+      // Ensure totals refresh immediately
+      await queryClient.invalidateQueries({ queryKey: ['budgets'], exact: false });
+      await queryClient.refetchQueries({ queryKey: ['budgets', 'project', projectId] });
+      await queryClient.invalidateQueries({ queryKey: ['expenses'], exact: false });
+      
       setExpenseModalOpen(false);
+      setEditingExpenseId(null);
       expenseForm.resetFields();
     } catch (error: any) {
       console.error('Error details:', error.response?.data);
-      message.error(error.response?.data?.detail || 'Грешка при добавяне на разход');
+      const backendMsg = error.response?.data?.detail as string | undefined;
+      if (backendMsg && /budget|over/i.test(backendMsg)) {
+        message.error('Достигнат е лимитът на бюджета');
+      } else {
+        message.error('Грешка: неуспешно добавяне на разход');
+      }
     }
+  };
+
+  const handleEditExpense = (expense: any) => {
+    setEditingExpenseId(expense.id);
+    expenseForm.setFieldsValue({
+      category: expense.category,
+      date: dayjs(expense.date),
+      description: expense.description,
+      vendor: expense.vendor,
+      invoice_number: expense.invoice_number,
+      amount: parseFloat(expense.amount),
+      expense_currency: expense.expense_currency || 'BGN',
+      notes: expense.notes,
+    });
+    setExpenseModalOpen(true);
+  };
+
+  const handleDeleteExpense = (id: number) => {
+    Modal.confirm({
+      title: 'Изтрий разход',
+      content: 'Сигурен ли си, че искаш да изтриеш този разход?',
+      okText: 'Да, изтрий',
+      cancelText: 'Отказ',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await deleteExpense.mutateAsync(id);
+          message.success('Разходът е изтрит успешно');
+          await queryClient.invalidateQueries({ queryKey: ['budgets'], exact: false });
+          await queryClient.refetchQueries({ queryKey: ['budgets', 'project', projectId] });
+          await queryClient.invalidateQueries({ queryKey: ['expenses'], exact: false });
+        } catch (error) {
+          message.error('Грешка при изтриване на разход');
+        }
+      },
+    });
+  };
+
+  const handleCloseModal = () => {
+    setExpenseModalOpen(false);
+    setEditingExpenseId(null);
+    expenseForm.resetFields();
   };
 
   const expenseColumns = [
@@ -101,8 +244,12 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
     },
     {
       title: 'Категория',
-      dataIndex: 'category_display',
+      dataIndex: 'category',
       key: 'category',
+      render: (category: string) => {
+        const cat = EXPENSE_CATEGORIES.find(c => c.value === category);
+        return cat?.label || category;
+      },
       filters: EXPENSE_CATEGORIES.map(cat => ({ text: cat.label, value: cat.value })),
       onFilter: (value: any, record: any) => record.category === value,
     },
@@ -125,13 +272,38 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
       title: 'Сума',
       dataIndex: 'amount',
       key: 'amount',
-      render: (amount: string) => `${parseFloat(amount).toFixed(2)} лв.`,
+      render: (amount: string, record: any) => formatDualCurrency(amount, record.expense_currency || 'BGN'),
       sorter: (a: any, b: any) => parseFloat(a.amount) - parseFloat(b.amount),
     },
     {
       title: 'Добавен от',
       dataIndex: 'created_by_name',
       key: 'created_by',
+    },
+    {
+      title: 'Промени',
+      key: 'actions',
+      render: (_: unknown, record: any) => (
+        <Space>
+          <Button 
+            type="link" 
+            size="small" 
+            icon={<EditOutlined />}
+            onClick={() => handleEditExpense(record)}
+          >
+            Редактирай
+          </Button>
+          <Button 
+            type="link" 
+            danger 
+            size="small" 
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteExpense(record.id)}
+          >
+            Изтрий
+          </Button>
+        </Space>
+      ),
     },
   ];
 
@@ -140,6 +312,7 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
   }
 
   const budgetUsagePercent = budget?.budget_usage_percentage || 0;
+  const roundedBudgetUsage = Math.round(budgetUsagePercent);
 
   return (
     <div style={{ padding: '24px' }}>
@@ -151,9 +324,7 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
               <Card>
                 <Statistic
                   title="Планиран бюджет"
-                  value={parseFloat(budget.initial_budget)}
-                  precision={2}
-                  suffix={budget.currency}
+                  value={formatDualCurrency(budget.initial_budget, budget.currency)}
                   prefix={<DollarOutlined />}
                 />
               </Card>
@@ -162,9 +333,7 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
               <Card>
                 <Statistic
                   title="Изразходвано"
-                  value={parseFloat(budget.total_expenses)}
-                  precision={2}
-                  suffix={budget.currency}
+                  value={formatDualCurrency(budget.total_expenses, budget.currency)}
                   valueStyle={{ color: budget.is_over_budget ? '#cf1322' : '#3f8600' }}
                   prefix={budget.is_over_budget ? <WarningOutlined /> : <CheckCircleOutlined />}
                 />
@@ -174,25 +343,41 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
               <Card>
                 <Statistic
                   title="Остатък"
-                  value={parseFloat(budget.remaining_budget)}
-                  precision={2}
-                  suffix={budget.currency}
+                  value={formatDualCurrency(budget.remaining_budget, budget.currency)}
                   valueStyle={{ color: parseFloat(budget.remaining_budget) < 0 ? '#cf1322' : '#3f8600' }}
                 />
               </Card>
             </Col>
             <Col span={24}>
               <Card>
-                <div style={{ marginBottom: '16px' }}>
-                  <strong>Използване на бюджета:</strong>
-                  {budget.is_over_budget && (
-                    <Tag color="error" style={{ marginLeft: '8px' }}>
-                      Надвишен бюджет!
-                    </Tag>
-                  )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                  <div>
+                    <strong>Използване на бюджета:</strong>
+                    {budget.is_over_budget && (
+                      <Tag color="error" style={{ marginLeft: '8px' }}>
+                        Надвишен бюджет!
+                      </Tag>
+                    )}
+                  </div>
+                  <Button 
+                    type="primary" 
+                    size="small"
+                    onClick={() => {
+                      budgetForm.setFieldsValue({
+                        initial_budget: parseFloat(budget.initial_budget),
+                        currency: budget.currency,
+                        notes: budget.notes || '',
+                      });
+                      setBudgetModalOpen(true);
+                    }}
+                  >
+                    Промени бюджет
+                  </Button>
                 </div>
                 <Progress
-                  percent={Math.round(budgetUsagePercent)}
+                  percent={roundedBudgetUsage}
+                  showInfo
+                  format={() => `${roundedBudgetUsage}%`}
                   status={budget.is_over_budget ? 'exception' : budgetUsagePercent > 80 ? 'normal' : 'success'}
                   strokeColor={budget.is_over_budget ? '#ff4d4f' : budgetUsagePercent > 80 ? '#faad14' : '#52c41a'}
                 />
@@ -245,14 +430,14 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
 
       {/* Create Budget Modal */}
       <Modal
-        title="Създай бюджет"
+        title={budget ? 'Промени бюджет' : 'Създай бюджет'}
         open={budgetModalOpen}
         onCancel={() => {
           setBudgetModalOpen(false);
           budgetForm.resetFields();
         }}
         onOk={() => budgetForm.submit()}
-        confirmLoading={createBudget.isPending}
+        confirmLoading={budget ? updateBudget.isPending : createBudget.isPending}
       >
         <Form form={budgetForm} layout="vertical" onFinish={handleCreateBudget}>
           <Form.Item
@@ -260,18 +445,21 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
             name="initial_budget"
             rules={[{ required: true, message: 'Моля, въведете бюджет' }]}
           >
-            <InputNumber
-              style={{ width: '100%' }}
-              min={0}
-              precision={2}
-              addonAfter="лв."
-            />
+            <Form.Item noStyle shouldUpdate={(prev, curr) => prev.currency !== curr.currency}>
+              {({ getFieldValue }) => (
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={0}
+                  precision={2}
+                  addonAfter={getCurrencySymbol(getFieldValue('currency') || 'BGN')}
+                />
+              )}
+            </Form.Item>
           </Form.Item>
           <Form.Item label="Валута" name="currency" initialValue="BGN">
             <Select>
               <Select.Option value="BGN">BGN (лв.)</Select.Option>
               <Select.Option value="EUR">EUR (€)</Select.Option>
-              <Select.Option value="USD">USD ($)</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item label="Бележки" name="notes">
@@ -282,14 +470,11 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
 
       {/* Create Expense Modal */}
       <Modal
-        title="Добави разход"
+        title={editingExpenseId ? 'Редактирай разход' : 'Добави разход'}
         open={expenseModalOpen}
-        onCancel={() => {
-          setExpenseModalOpen(false);
-          expenseForm.resetFields();
-        }}
+        onCancel={handleCloseModal}
         onOk={() => expenseForm.submit()}
-        confirmLoading={createExpense.isPending}
+        confirmLoading={editingExpenseId ? updateExpense.isPending : createExpense.isPending}
         width={600}
       >
         <Form form={expenseForm} layout="vertical" onFinish={handleCreateExpense}>
@@ -317,7 +502,8 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
           <Form.Item
             label="Описание"
             name="description"
-            rules={[{ required: true, message: 'Въведете описание' }]}
+            // Optional description
+            rules={[]}
           >
             <Input />
           </Form.Item>
@@ -350,8 +536,13 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
             <Col span={8}>
               <Form.Item
                 label="Валута"
+                name="expense_currency"
+                initialValue="BGN"
               >
-                <Input disabled value={budget?.currency || 'BGN'} />
+                <Select>
+                  <Select.Option value="BGN">BGN (лв.)</Select.Option>
+                  <Select.Option value="EUR">EUR (€)</Select.Option>
+                </Select>
               </Form.Item>
             </Col>
           </Row>

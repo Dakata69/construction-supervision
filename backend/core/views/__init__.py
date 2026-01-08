@@ -6,7 +6,7 @@ from .project import (
 )
 from .document import DocumentViewSet, generate_document_view, upload_document_view
 from .act import ActViewSet
-from .activity import ActivityLogViewSet, upcoming_tasks_view
+from .activity import ActivityLogViewSet, upcoming_tasks_view, UserViewSet
 from .features import (
     ProjectBudgetViewSet,
     BudgetExpenseViewSet,
@@ -29,6 +29,7 @@ __all__ = [
     'upload_document_view',
     'ActViewSet',
     'ActivityLogViewSet',
+    'UserViewSet',
     'upcoming_tasks_view',
     'ProjectBudgetViewSet',
     'BudgetExpenseViewSet',

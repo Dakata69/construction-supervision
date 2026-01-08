@@ -1,6 +1,5 @@
 // frontend/src/components/Header.tsx
-import { Layout, Menu, Button, Avatar, Dropdown, Switch, Tooltip, Space, message } from 'antd';
-import type { MenuProps } from 'antd';
+import { Layout, Button, Avatar, Dropdown, Switch, Tooltip, Space, message } from 'antd';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   HomeOutlined,
@@ -8,16 +7,14 @@ import {
   FileOutlined,
   UserOutlined,
   LogoutOutlined,
-  SettingOutlined,
+  BarChartOutlined,
+  BellOutlined,
+  DashboardOutlined,
   EyeInvisibleOutlined,
   EyeOutlined,
   BulbOutlined,
   MoonOutlined,
-  DashboardOutlined,
-  BellOutlined,
-  FileTextOutlined,
 } from '@ant-design/icons';
-import { BarChartOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -30,7 +27,6 @@ import { usePendingReminders, useDismissReminder } from '../api/hooks/useFeature
 import type { Reminder } from '../api/hooks/useFeatures';
 
 const { Header: AntHeader } = Layout;
-type MenuItem = Required<MenuProps>['items'][number];
 
 const StyledHeader = styled(AntHeader)`
   background: #fff;
@@ -98,39 +94,58 @@ const Logo = styled.h1`
   text-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
 `;
 
-const StyledMenu = styled(Menu)`
-  border: none;
+const NavContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex: 1;
   
-  .ant-menu-item {
-    font-size: 15px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    border-radius: 8px;
-    margin: 0 4px;
-    
-    &:hover {
-      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
-      transform: translateY(-2px);
-    }
-    
-    &.ant-menu-item-selected {
-      background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%) !important;
-      color: #667eea !important;
-      
-      &::after {
-        border-bottom: 3px solid #667eea !important;
-      }
-    }
+  @media (max-width: 768px) {
+    gap: 4px;
   }
-  
-  .anticon {
+`;
+
+const NavLink = styled(Link)<{ $isActive?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  text-decoration: none;
+  color: rgba(0, 0, 0, 0.88);
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+
+  &:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    transform: translateY(-2px);
+    color: #667eea;
+  }
+
+  ${props => props.$isActive && `
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+    color: #667eea;
+    border-bottom: 3px solid #667eea;
+  `}
+
+  svg {
     font-size: 16px;
     transition: transform 0.3s ease;
   }
-  
-  .ant-menu-item:hover .anticon {
+
+  &:hover svg {
     transform: scale(1.15) rotate(5deg);
+  }
+
+  @media (max-width: 1024px) {
+    padding: 6px 10px;
+    font-size: 13px;
+
+    svg {
+      font-size: 14px;
+    }
   }
 `;
 
@@ -151,33 +166,17 @@ export default function Header() {
   const dispatch = useDispatch();
   const backgroundEnabled = useSelector((state: RootState) => state.ui.backgroundEnabled);
   const dayNightCycleEnabled = useSelector((state: RootState) => state.ui.dayNightCycleEnabled);
-  const userRole = useSelector((state: RootState) => state.auth.role);
   const canEdit = useSelector((state: RootState) => state.auth.canEdit);
   const authInitialized = useSelector((state: RootState) => state.auth.authInitialized);
   const user = useSelector((state: RootState) => state.auth.user);
   const isAuthenticated = !!user;
-  const [apiHealthy, setApiHealthy] = useState<boolean | null>(null);
   const [pushSupported, setPushSupported] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
-  const [remindersOpen, setRemindersOpen] = useState(false);
   
-  // Fetch pending reminders
   const { data: reminders = [] } = usePendingReminders();
   const dismissReminder = useDismissReminder();
   
-  // Debug logging
-  console.log('Header - isAuthenticated:', isAuthenticated, 'userRole:', userRole, 'canEdit:', canEdit);
-  
-  const userMenuItems: MenuItem[] = [
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: 'Изход',
-      danger: true,
-    },
-  ];
-
   useEffect(() => {
     const checkPush = async () => {
       const supported = 'serviceWorker' in navigator && 'PushManager' in window;
@@ -194,17 +193,11 @@ export default function Header() {
     checkPush();
   }, []);
 
-  useEffect(() => {
-    api.get('health/').then(() => setApiHealthy(true)).catch(() => setApiHealthy(false));
-  }, []);
-
-  const handleMenuClick = ({ key }: { key: string }) => {
+  const handleUserMenuClick = ({ key }: { key: string }) => {
     if (key === 'logout') {
       localStorage.removeItem('auth_token');
       dispatch(logout());
       navigate('/login');
-    } else {
-      navigate(key);
     }
   };
 
@@ -220,31 +213,25 @@ export default function Header() {
         setPushEnabled(false);
         if (ok) message.success('Push известията са изключени.');
       } else {
-        const ok = await registerPush();
-        setPushEnabled(!!ok);
-        if (ok) message.success('Push известията са включени.');
-        else message.error('Неуспешно включване на push известия.');
+        const result = await registerPush();
+        if (result.success) {
+          setPushEnabled(true);
+          message.success('Push известията са включени.');
+        } else {
+          setPushEnabled(false);
+          const errorMsg = result.error || 'Неуспешно включване на push известия.';
+          // Show multi-line error message with better formatting
+          message.error({
+            content: errorMsg,
+            duration: 8,
+            style: { whiteSpace: 'pre-line' }
+          });
+        }
       }
     } catch (e) {
       message.error('Възникна грешка при push настройките.');
     } finally {
       setPushLoading(false);
-    }
-  };
-
-  const handleTestNotification = () => {
-    if (!('Notification' in window)) {
-      message.warning('Браузърът не поддържа известия.');
-      return;
-    }
-    if (Notification.permission !== 'granted') {
-      message.info('Моля позволете известия и опитайте отново.');
-      return;
-    }
-    try {
-      new Notification('Тестово известие', { body: 'Push тест от приложението.' });
-    } catch (e) {
-      message.error('Неуспешно показване на тестово известие.');
     }
   };
 
@@ -257,7 +244,7 @@ export default function Header() {
     }
   };
 
-  const reminderMenuItems: MenuItem[] = reminders.map((reminder: Reminder) => ({
+  const reminderMenuItems = reminders.map((reminder: Reminder) => ({
     key: reminder.id,
     label: (
       <div style={{ width: '300px', padding: '8px' }}>
@@ -283,57 +270,15 @@ export default function Header() {
       </div>
     ),
   }));
-  
-  // Build menu items dynamically based on authentication
-  const menuItems: MenuItem[] = [
+
+  const userMenuItems = [
     {
-      key: '/',
-      icon: <HomeOutlined />,
-      label: 'Начало',
-    },
-    {
-      key: '/previous-projects',
-      icon: <ProjectOutlined />,
-      label: 'Завършени проекти',
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Изход',
+      danger: true,
     },
   ];
-  
-  // Add authenticated menu items
-  if (isAuthenticated) {
-    // All authenticated users can see projects immediately
-    menuItems.push(
-      {
-        key: '/projects',
-        icon: <ProjectOutlined />,
-        label: 'Обекти',
-      },
-      {
-        key: '/analytics',
-        icon: <BarChartOutlined />,
-        label: 'Аналитика',
-      }
-    );
-  }
-  // Only admins can see Documents and Admin panel (after auth is resolved)
-  if (authInitialized && canEdit) {
-    menuItems.push(
-      {
-        key: '/documents',
-        icon: <FileOutlined />,
-        label: 'Документи',
-      },
-      {
-        key: '/templates',
-        icon: <FileTextOutlined />,
-        label: 'Шаблони',
-      },
-      {
-        key: '/admin',
-        icon: <DashboardOutlined />,
-        label: 'Административен панел',
-      }
-    );
-  }
 
   return (
     <StyledHeader>
@@ -342,14 +287,43 @@ export default function Header() {
           <Logo>SVConsult</Logo>
         </LogoLink>
         
-        <StyledMenu
-          mode="horizontal"
-          selectedKeys={[location.pathname]}
-          items={menuItems}
-          onClick={({ key }) => navigate(key)}
-          overflowedIndicator={null}
-          style={{ flex: 1, minWidth: 0 }}
-        />
+        <NavContainer>
+          <NavLink to="/" $isActive={location.pathname === '/'}>
+            <HomeOutlined />
+            Начало
+          </NavLink>
+          
+          {isAuthenticated ? (
+            <>
+              {authInitialized && canEdit && (
+                <NavLink to="/previous-projects" $isActive={location.pathname === '/previous-projects'}>
+                  <ProjectOutlined />
+                  Завършени проекти
+                </NavLink>
+              )}
+              <NavLink to="/projects" $isActive={location.pathname.startsWith('/projects')}>
+                <ProjectOutlined />
+                Обекти
+              </NavLink>
+              <NavLink to="/analytics" $isActive={location.pathname === '/analytics'}>
+                <BarChartOutlined />
+                Аналитика
+              </NavLink>
+              {authInitialized && canEdit && (
+                <>
+                  <NavLink to="/documents" $isActive={location.pathname === '/documents'}>
+                    <FileOutlined />
+                    Документи
+                  </NavLink>
+                  <NavLink to="/admin" $isActive={location.pathname === '/admin'}>
+                    <DashboardOutlined />
+                    Админ
+                  </NavLink>
+                </>
+              )}
+            </>
+          ) : null}
+        </NavContainer>
       </div>
       
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -417,7 +391,7 @@ export default function Header() {
           <Dropdown
             menu={{
               items: userMenuItems,
-              onClick: handleMenuClick,
+              onClick: handleUserMenuClick,
             }}
             placement="bottomRight"
           >

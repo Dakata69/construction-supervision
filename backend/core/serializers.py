@@ -31,14 +31,22 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class TaskSerializer(serializers.ModelSerializer):
-    assigned_to_name = serializers.CharField(source='assigned_to.username', read_only=True)
+    assigned_to_name = serializers.CharField(required=False, allow_blank=True)
     
     class Meta:
         model = Task
         fields = ['id', 'project', 'title', 'description', 'status', 'priority', 
                   'assigned_to', 'assigned_to_name', 'due_date', 'completed_at', 
                   'created_at', 'updated_at', 'created_by']
-        read_only_fields = ('created_at', 'updated_at', 'created_by', 'completed_at')
+        read_only_fields = ('created_at', 'updated_at', 'created_by', 'completed_at', 'assigned_to')
+    
+    def to_representation(self, instance):
+        """Customize the output to ensure assigned_to_name is always returned"""
+        representation = super().to_representation(instance)
+        # If assigned_to_name is empty but assigned_to exists, use username
+        if not representation.get('assigned_to_name') and instance.assigned_to:
+            representation['assigned_to_name'] = instance.assigned_to.username
+        return representation
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -171,14 +179,13 @@ class ActivityLogSerializer(serializers.ModelSerializer):
 class BudgetExpenseSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.username', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
-    currency = serializers.CharField(source='budget.currency', read_only=True)
     
     class Meta:
         model = BudgetExpense
         fields = ['id', 'budget', 'category', 'category_display', 'description', 
-                  'amount', 'date', 'invoice_number', 'vendor', 'notes', 'currency',
+                  'amount', 'date', 'invoice_number', 'vendor', 'expense_currency', 'notes',
                   'created_by', 'created_by_name', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by', 'currency']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
 
 
 class ProjectBudgetSerializer(serializers.ModelSerializer):
@@ -194,6 +201,17 @@ class ProjectBudgetSerializer(serializers.ModelSerializer):
                   'total_expenses', 'remaining_budget', 'budget_usage_percentage',
                   'is_over_budget', 'expenses', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate(self, attrs):
+        # Prevent creating a second budget for the same project
+        project = attrs.get('project')
+        if project and self.instance is None:
+            from .models import ProjectBudget as PB
+            if PB.objects.filter(project=project).exists():
+                raise serializers.ValidationError({
+                    'project': 'Бюджет за този проект вече съществува'
+                })
+        return attrs
 
 
 class DocumentTemplateSerializer(serializers.ModelSerializer):
@@ -246,5 +264,92 @@ class ReminderSerializer(serializers.ModelSerializer):
                   'trigger_date', 'sent_at', 'recipient', 'recipient_name',
                   'status', 'status_display', 'push_sent', 'created_at', 'updated_at']
         read_only_fields = ['id', 'sent_at', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at']
 
+
+class CreateUserSerializer(serializers.Serializer):
+    """Serializer for creating new users by admin users"""
+    username = serializers.CharField(max_length=150, required=True)
+    email = serializers.EmailField(required=True)
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    role = serializers.ChoiceField(
+        choices=['privileged', 'admin'],
+        default='privileged'
+    )
+
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError('Username already exists')
+        return value
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError('Email already registered')
+        return value
+
+    def create(self, validated_data):
+        import secrets
+        from .models import UserProfile, PasswordResetToken
+        
+        # Generate random password
+        temp_password = secrets.token_urlsafe(12)
+        
+        # Create user
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
+            password=temp_password
+        )
+        
+        # Create user profile with role
+        UserProfile.objects.get_or_create(
+            user=user,
+            defaults={'role': validated_data.get('role', 'viewer')}
+        )
+        
+        # Create password reset token for user to set their own password
+        reset_token = PasswordResetToken.create_token(user)
+        
+        return {
+            'user': user,
+            'temporary_password': temp_password,
+            'reset_token': reset_token
+        }
+
+
+class PasswordResetSerializer(serializers.Serializer):
+    """Serializer for resetting password with token"""
+    token = serializers.CharField(required=True)
+    password = serializers.CharField(write_only=True, min_length=8, required=True)
+    password_confirm = serializers.CharField(write_only=True, min_length=8, required=True)
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password_confirm']:
+            raise serializers.ValidationError({'password': 'Passwords do not match'})
+        return attrs
+
+    def save(self, **kwargs):
+        from .models import PasswordResetToken
+        
+        token_str = self.validated_data['token']
+        try:
+            reset_token = PasswordResetToken.objects.get(token=token_str)
+            if not reset_token.is_valid():
+                raise serializers.ValidationError('Password reset token is invalid or expired')
+            
+            user = reset_token.user
+            user.set_password(self.validated_data['password'])
+            user.save()
+            
+            reset_token.mark_used()
+            
+            return user
+        except PasswordResetToken.DoesNotExist:
+            raise serializers.ValidationError('Invalid password reset token')
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Serializer for requesting password reset"""
+    email = serializers.EmailField(required=True)

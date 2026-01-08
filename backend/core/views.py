@@ -2,8 +2,9 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, action, permission_classes
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny
 from rest_framework.response import Response
-from .serializers import DocumentSerializer, ProjectSerializer, TaskSerializer, ActSerializer, ActivityLogSerializer
+from .serializers import DocumentSerializer, ProjectSerializer, TaskSerializer, ActSerializer, ActivityLogSerializer, UserSerializer
 from .models import Document, Project, Task, Act, ActivityLog
+from django.contrib.auth.models import User
 
 
 class ProjectViewSet(viewsets.ModelViewSet):

@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from django.contrib.auth.models import AnonymousUser
+import hashlib
 from ..models import PushSubscription
 from ..serializers import PushSubscriptionSerializer
 
@@ -18,10 +19,14 @@ class PushSubscribeView(APIView):
         if not endpoint or not p256dh or not auth:
             return Response({'error': 'Invalid subscription'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Generate hash for endpoint to use as lookup key (avoids issues with long URLs in database queries)
+        endpoint_hash = hashlib.sha256(endpoint.encode()).hexdigest()
+        
         sub, created = PushSubscription.objects.update_or_create(
-            endpoint=endpoint,
+            endpoint_hash=endpoint_hash,
             defaults={
                 'user': request.user,
+                'endpoint': endpoint,
                 'p256dh': p256dh,
                 'auth': auth,
                 'user_agent': request.META.get('HTTP_USER_AGENT', '')[:256],
@@ -39,5 +44,8 @@ class PushUnsubscribeView(APIView):
         endpoint = data.get('endpoint')
         if not endpoint:
             return Response({'error': 'endpoint required'}, status=status.HTTP_400_BAD_REQUEST)
-        PushSubscription.objects.filter(user=request.user, endpoint=endpoint).delete()
+        
+        # Generate hash for endpoint to use as lookup key
+        endpoint_hash = hashlib.sha256(endpoint.encode()).hexdigest()
+        PushSubscription.objects.filter(endpoint_hash=endpoint_hash).delete()
         return Response({'ok': True})

@@ -77,13 +77,24 @@ class Project(models.Model):
 
     @property
     def progress_percentage(self):
-        if self.progress:
-            return min(max(self.progress, 0), 100)
-        total_tasks = getattr(self, 'tasks', None).count() if hasattr(self, 'tasks') else 0
-        if total_tasks == 0:
-            return self.progress
-        completed_tasks = self.tasks.filter(status='completed').count()
-        return min(max((completed_tasks / total_tasks) * 100, 0), 100)
+        try:
+            if self.progress:
+                return min(max(self.progress, 0), 100)
+            
+            # Try to get total tasks count
+            try:
+                total_tasks = self.tasks.count()
+            except:
+                total_tasks = 0
+            
+            if total_tasks == 0:
+                return self.progress if self.progress else 0
+            
+            completed_tasks = self.tasks.filter(status='completed').count()
+            return min(max((completed_tasks / total_tasks) * 100, 0), 100)
+        except Exception:
+            # If anything goes wrong, return the progress field or 0
+            return self.progress if self.progress else 0
 
 class ProjectDocument(models.Model):
     DOCUMENT_TYPES = [

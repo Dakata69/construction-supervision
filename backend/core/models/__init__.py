@@ -9,6 +9,7 @@ from .budget import ProjectBudget, BudgetExpense
 from .template import DocumentTemplate, TextSnippet
 from .weather import WeatherLog
 from .reminder import Reminder
+from .password_reset import PasswordResetToken
 import pymysql
 pymysql.install_as_MySQLdb()
 
@@ -18,6 +19,7 @@ __all__ = [
     'BudgetExpense',
     'Document',
     'DocumentTemplate',
+    'PasswordResetToken',
     'Project',
     'ProjectBudget',
     'PushSubscription',

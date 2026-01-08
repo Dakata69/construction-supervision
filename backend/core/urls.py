@@ -8,6 +8,7 @@ from .views import (
     ProjectDocumentViewSet,
     ActViewSet,
     ActivityLogViewSet,
+    UserViewSet,
     upcoming_tasks_view,
     ProjectBudgetViewSet,
     BudgetExpenseViewSet,
@@ -18,6 +19,13 @@ from .views import (
     analytics_dashboard_view,
     fetch_weather_view,
     validate_bulgarian_id_view
+)
+from .views.users import (
+    create_user_view,
+    reset_password_view,
+    request_password_reset_view,
+    validate_reset_token_view,
+    UserManagementViewSet
 )
 from .views.push import PushSubscribeView, PushUnsubscribeView
 
@@ -35,6 +43,8 @@ router.register(r'templates', DocumentTemplateViewSet, basename='template')
 router.register(r'snippets', TextSnippetViewSet, basename='snippet')
 router.register(r'weather', WeatherLogViewSet, basename='weather')
 router.register(r'reminders', ReminderViewSet, basename='reminder')
+router.register(r'users', UserViewSet, basename='user')
+router.register(r'user-management', UserManagementViewSet, basename='user-management')
 
 urlpatterns = [
     path('documents/generate/', views.generate_document_view, name='documents-generate'),
@@ -45,4 +55,8 @@ urlpatterns = [
     path('analytics/dashboard/', analytics_dashboard_view, name='analytics-dashboard'),
     path('weather/fetch/', fetch_weather_view, name='weather-fetch'),
     path('validate/bulgarian-id/', validate_bulgarian_id_view, name='validate-bulgarian-id'),
+    path('auth/create-user/', create_user_view, name='auth-create-user'),
+    path('auth/reset-password/', reset_password_view, name='auth-reset-password'),
+    path('auth/request-password-reset/', request_password_reset_view, name='auth-request-password-reset'),
+    path('auth/validate-reset-token/', validate_reset_token_view, name='auth-validate-reset-token'),
 ] + router.urls
