@@ -529,7 +529,7 @@ export default function Documents() {
                   {(() => {
                     const vals = form7.getFieldsValue();
                     const missing = getMissing(act7Placeholders, vals);
-                    return missing.length ? <div style={{ color:'#faad14' }}>Незапълнени: {missing.map(translatePlaceholder).join(', ')}</div> : <div style={{ color:'#52c41a' }}>Всички попълнени или незадължителни.</div>;
+                    return missing.length ? <div>Незапълнени: {missing.map(translatePlaceholder).join(', ')}</div> : null;
                   })()}
                 </Space>
               </Form>
@@ -590,7 +590,7 @@ export default function Documents() {
                   {(() => {
                     const vals = form14.getFieldsValue();
                     const missing = getMissing(act14Placeholders, vals);
-                    return missing.length ? <div style={{ color:'#faad14' }}>Незапълнени: {missing.map(translatePlaceholder).join(', ')}</div> : <div style={{ color:'#52c41a' }}>Всички попълнени или незадължителни.</div>;
+                    return missing.length ? <div>Незапълнени: {missing.map(translatePlaceholder).join(', ')}</div> : null;
                   })()}
                 </Space>
               </Form>
@@ -651,7 +651,7 @@ export default function Documents() {
                   {(() => {
                     const vals = form15.getFieldsValue();
                     const missing = getMissing(act15Placeholders, vals);
-                    return missing.length ? <div style={{ color:'#faad14' }}>Незапълнени: {missing.map(translatePlaceholder).join(', ')}</div> : <div style={{ color:'#52c41a' }}>Всички попълнени или незадължителни.</div>;
+                    return missing.length ? <div>Незапълнени: {missing.map(translatePlaceholder).join(', ')}</div> : null;
                   })()}
                 </Space>
               </Form>
