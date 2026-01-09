@@ -526,11 +526,6 @@ export default function Documents() {
                   <Button type="primary" htmlType="submit">
                     Генерирай Акт 7
                   </Button>
-                  {(() => {
-                    const vals = form7.getFieldsValue();
-                    const missing = getMissing(act7Placeholders, vals);
-                    return missing.length ? <div>Незапълнени: {missing.map(translatePlaceholder).join(', ')}</div> : null;
-                  })()}
                 </Space>
               </Form>
             </Card>
@@ -587,11 +582,6 @@ export default function Documents() {
                   <Button type="primary" htmlType="submit">
                     Генерирай Акт 14
                   </Button>
-                  {(() => {
-                    const vals = form14.getFieldsValue();
-                    const missing = getMissing(act14Placeholders, vals);
-                    return missing.length ? <div>Незапълнени: {missing.map(translatePlaceholder).join(', ')}</div> : null;
-                  })()}
                 </Space>
               </Form>
             </Card>
@@ -648,11 +638,6 @@ export default function Documents() {
                   <Button type="primary" htmlType="submit">
                     Генерирай Акт 15
                   </Button>
-                  {(() => {
-                    const vals = form15.getFieldsValue();
-                    const missing = getMissing(act15Placeholders, vals);
-                    return missing.length ? <div>Незапълнени: {missing.map(translatePlaceholder).join(', ')}</div> : null;
-                  })()}
                 </Space>
               </Form>
             </Card>
