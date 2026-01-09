@@ -85,17 +85,17 @@ const UserManagement: React.FC = () => {
     });
   };
 
-  const handleDeleteUser = async (userId: number, username: string) => {
+  const handleDeleteUser = async (userId: number, displayLabel: string) => {
     Modal.confirm({
       title: 'Изтриване на потребител',
-      content: `Сигурни ли сте, че искате окончателно да изтриете "${username}"? Действието е необратимо и потребителят няма да може да влиза повече в системата.`,
+      content: `Сигурни ли сте, че искате окончателно да изтриете "${displayLabel}"? Действието е необратимо и потребителят няма да може да влиза повече в системата.`,
       okText: 'Изтрий',
       okType: 'danger',
       cancelText: 'Отказ',
       onOk: async () => {
         try {
           await api.delete(`/user-management/${userId}/`);
-          message.success(`Потребителят ${username} бе изтрит`);
+          message.success(`Потребителят ${displayLabel} бе изтрит`);
           fetchUsers();
         } catch (error) {
           message.error('Неуспешно изтриване на потребител');
@@ -106,20 +106,15 @@ const UserManagement: React.FC = () => {
 
   const columns = [
     {
-      title: 'Потребителско име',
-      dataIndex: 'username',
-      key: 'username',
+      title: 'Име',
+      key: 'name',
+      render: (_: any, record: any) =>
+        `${record.first_name} ${record.last_name}`.trim() || '-',
     },
     {
       title: 'Имейл',
       dataIndex: 'email',
       key: 'email',
-    },
-    {
-      title: 'Име',
-      key: 'name',
-      render: (_: any, record: any) =>
-        `${record.first_name} ${record.last_name}`.trim() || '-',
     },
     {
       title: 'Роля',
@@ -157,7 +152,7 @@ const UserManagement: React.FC = () => {
             size="small"
             danger
             icon={<DeleteOutlined />}
-            onClick={() => handleDeleteUser(record.id, record.username)}
+            onClick={() => handleDeleteUser(record.id, record.email || record.id)}
           >
             Изтрий
           </Button>
@@ -184,7 +179,7 @@ const UserManagement: React.FC = () => {
           >
             <Alert
               message="Създайте потребители и им изпратете данни за вход"
-              description="Новите потребители получават временно потребителско име и временна парола в имейла, както и линк, с който могат да променят и двете."
+              description="Новите потребители получават временна парола в имейла и линк, чрез който задават собствено потребителско име и нова парола."
               type="info"
               showIcon
               style={{ marginBottom: 16 }}
@@ -221,8 +216,8 @@ const UserManagement: React.FC = () => {
           autoComplete="off"
         >
           <Alert
-            message="Потребителското име ще бъде зададено от потребителя"
-            description="Не е необходимо да въвеждате потребителско име. Потребителят ще може да избере свое потребителско име и парола чрез линка в имейла."
+            message="Потребителят сам ще зададе своето потребителско име"
+            description="Не въвеждате потребителско име тук. Потребителят ще го избере заедно с нова парола чрез линка в имейла."
             type="info"
             showIcon
             style={{ marginBottom: 16 }}
