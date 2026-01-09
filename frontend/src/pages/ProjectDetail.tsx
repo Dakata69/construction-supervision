@@ -485,8 +485,8 @@ const ProjectDetail: React.FC = () => {
               ),
               children: (
                 <div>
-                  <Space style={{ marginBottom: 16 }}>
-                    {canEdit && (
+                  {canEdit && (
+                    <Space style={{ marginBottom: 16 }}>
                       <Button 
                         type="primary" 
                         icon={<LinkOutlined />}
@@ -494,11 +494,8 @@ const ProjectDetail: React.FC = () => {
                       >
                         Добави документ
                       </Button>
-                    )}
-                    <Button type="link" onClick={() => navigate('/documents')}>
-                      Отвори всички документи
-                    </Button>
-                  </Space>
+                    </Space>
+                  )}
                   <Table
                     columns={documentColumns}
                     dataSource={linkedDocuments}
