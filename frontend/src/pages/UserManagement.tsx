@@ -110,16 +110,19 @@ const UserManagement: React.FC = () => {
       key: 'name',
       render: (_: any, record: any) =>
         `${record.first_name} ${record.last_name}`.trim() || '-',
+      ellipsis: true,
     },
     {
       title: 'Имейл',
       dataIndex: 'email',
       key: 'email',
+      ellipsis: true,
     },
     {
       title: 'Роля',
       dataIndex: 'role',
       key: 'role',
+      ellipsis: true,
       render: (role: string) => {
         const colors: Record<string, string> = {
           admin: 'red',
@@ -191,7 +194,7 @@ const UserManagement: React.FC = () => {
                 dataSource={users}
                 rowKey="id"
                 pagination={{ pageSize: 20 }}
-                scroll={{ x: 1200 }}
+                scroll={{ x: 'max-content' }}
                 size="large"
               />
             </Spin>
