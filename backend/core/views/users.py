@@ -8,7 +8,8 @@ from django.utils import timezone
 from core.models import UserProfile, PasswordResetToken
 from core.serializers import (
     UserSerializer, CreateUserSerializer, 
-    PasswordResetSerializer, PasswordResetRequestSerializer
+    PasswordResetSerializer, PasswordResetRequestSerializer,
+    SetCredentialsSerializer,
 )
 from core.utils.email_sender import send_credentials_email, send_password_reset_email
 
@@ -36,10 +37,11 @@ def create_user_view(request):
         result = serializer.save()
         user = result['user']
         temp_password = result['temporary_password']
+        reset_token = result.get('reset_token')
         
         try:
-            # Send single consolidated email with username and temporary password
-            send_credentials_email(user, temp_password)
+            # Send consolidated email with username, temporary password and setup link
+            send_credentials_email(user, temp_password, reset_token=reset_token)
             
             return Response({
                 'message': 'User created successfully. Credentials have been sent to their email.',
@@ -81,29 +83,39 @@ def reset_password_view(request):
 @permission_classes([AllowAny])
 def request_password_reset_view(request):
     """Request a password reset email"""
+    import logging
+    logger = logging.getLogger('core')
+    
     serializer = PasswordResetRequestSerializer(data=request.data)
     if serializer.is_valid():
         email = serializer.validated_data['email']
+        logger.info(f"Password reset requested for email: {email}")
         try:
             user = User.objects.get(email=email)
+            logger.info(f"User found for email {email}: {user.username}")
             reset_token = PasswordResetToken.create_token(user)
+            logger.info(f"Reset token created: {reset_token.token[:20]}...")
             
             try:
                 send_password_reset_email(user, reset_token)
+                logger.info(f"Password reset email sent successfully to {email}")
                 return Response({
                     'message': 'If an account with that email exists, a password reset link has been sent.'
                 }, status=status.HTTP_200_OK)
             except Exception as e:
+                logger.error(f"Failed to send password reset email: {str(e)}", exc_info=True)
                 return Response({
                     'message': 'Password reset requested but email delivery failed. Please contact support.',
                     'error': str(e)
                 }, status=status.HTTP_200_OK)
         except User.DoesNotExist:
+            logger.info(f"No user found with email {email} (security: not revealing to client)")
             # Don't reveal if email exists or not
             return Response({
                 'message': 'If an account with that email exists, a password reset link has been sent.'
             }, status=status.HTTP_200_OK)
     
+    logger.error(f"Invalid request data: {serializer.errors}")
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -157,7 +169,10 @@ class UserManagementViewSet(viewsets.ModelViewSet):
             user.set_password(temp_password)
             user.save()
             
-            send_credentials_email(user, temp_password)
+            # Create a fresh token for setup link
+            reset_token = PasswordResetToken.create_token(user)
+
+            send_credentials_email(user, temp_password, reset_token=reset_token)
             
             return Response({
                 'message': 'Credentials email has been resent successfully.'
@@ -182,6 +197,23 @@ class UserManagementViewSet(viewsets.ModelViewSet):
             return Response({
                 'error': f'Failed to send email: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def set_credentials_view(request):
+    """Set both username and password using a one-time token"""
+    serializer = SetCredentialsSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            user = serializer.save()
+            return Response({
+                'message': 'Credentials updated successfully. You can now sign in with your new username and password.',
+                'user': UserSerializer(user).data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def destroy(self, request, *args, **kwargs):
         """Delete a user completely (cannot undo)"""

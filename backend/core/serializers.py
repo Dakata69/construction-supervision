@@ -267,8 +267,9 @@ class ReminderSerializer(serializers.ModelSerializer):
 
 
 class CreateUserSerializer(serializers.Serializer):
-    """Serializer for creating new users by admin users"""
-    username = serializers.CharField(max_length=150, required=True)
+    """Serializer for creating new users by admin users.
+    Username is optional (auto-generated); user will set their own later via setup link."""
+    username = serializers.CharField(max_length=150, required=False, allow_blank=True)
     email = serializers.EmailField(required=True)
     first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
@@ -276,11 +277,6 @@ class CreateUserSerializer(serializers.Serializer):
         choices=['privileged', 'admin'],
         default='privileged'
     )
-
-    def validate_username(self, value):
-        if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError('Username already exists')
-        return value
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -294,9 +290,26 @@ class CreateUserSerializer(serializers.Serializer):
         # Generate random password
         temp_password = secrets.token_urlsafe(12)
         
+        # Always generate username automatically (ignore input) so users change both later
+        base = ''
+        email = validated_data.get('email', '')
+        if email and '@' in email:
+            base = email.split('@', 1)[0]
+        else:
+            first = (validated_data.get('first_name') or '').strip()
+            last = (validated_data.get('last_name') or '').strip()
+            base = (first + '.' + last).strip('.') or 'user'
+        import re, random
+        base = re.sub(r'[^a-zA-Z0-9_.-]', '', base) or 'user'
+        candidate = base[:20]
+        # Ensure uniqueness by appending random suffix if necessary
+        while User.objects.filter(username=candidate).exists():
+            candidate = (base[:16] + str(random.randint(1000, 9999)))[:20]
+        username = candidate
+
         # Create user
         user = User.objects.create_user(
-            username=validated_data['username'],
+            username=username,
             email=validated_data['email'],
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),
@@ -353,3 +366,43 @@ class PasswordResetSerializer(serializers.Serializer):
 class PasswordResetRequestSerializer(serializers.Serializer):
     """Serializer for requesting password reset"""
     email = serializers.EmailField(required=True)
+
+
+class SetCredentialsSerializer(serializers.Serializer):
+    """Serializer for setting both username and password via one-time token"""
+    token = serializers.CharField(required=True)
+    username = serializers.CharField(max_length=150, required=True)
+    password = serializers.CharField(write_only=True, min_length=8, required=True)
+    password_confirm = serializers.CharField(write_only=True, min_length=8, required=True)
+
+    def validate_username(self, value):
+        # Ensure username is unique
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError('Username already exists')
+        return value
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password_confirm']:
+            raise serializers.ValidationError({'password': 'Passwords do not match'})
+        return attrs
+
+    def save(self, **kwargs):
+        from .models import PasswordResetToken
+
+        token_str = self.validated_data['token']
+        try:
+            reset_token = PasswordResetToken.objects.get(token=token_str)
+            if not reset_token.is_valid():
+                raise serializers.ValidationError('Token is invalid or expired')
+
+            user = reset_token.user
+
+            # Update both username and password
+            user.username = self.validated_data['username']
+            user.set_password(self.validated_data['password'])
+            user.save()
+
+            reset_token.mark_used()
+            return user
+        except PasswordResetToken.DoesNotExist:
+            raise serializers.ValidationError('Invalid token')

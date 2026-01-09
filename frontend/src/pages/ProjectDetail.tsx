@@ -440,6 +440,7 @@ const ProjectDetail: React.FC = () => {
         </Descriptions>
       </Card>
 
+      {canEdit && (
       <Card style={{ marginTop: 24 }}>
         <Tabs
           defaultActiveKey="tasks"
@@ -535,6 +536,7 @@ const ProjectDetail: React.FC = () => {
           ]}
         />
       </Card>
+      )}
 
       <Modal
         title="Добави документ към проекта"

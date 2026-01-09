@@ -15,14 +15,15 @@ import {
   Spin,
   Alert,
 } from 'antd';
-import { PlusOutlined, MailOutlined, LockOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, MailOutlined, DeleteOutlined } from '@ant-design/icons';
 import { api } from '../api/client';
 import styled from 'styled-components';
 
 const PageContainer = styled.div`
   padding: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
+  width: 100%;
 `;
 
 const UserManagement: React.FC = () => {
@@ -58,7 +59,6 @@ const UserManagement: React.FC = () => {
       fetchUsers();
     } catch (error: any) {
       const errorMsg =
-        error.response?.data?.username?.[0] ||
         error.response?.data?.email?.[0] ||
         error.response?.data?.error ||
         'Неуспешно създаване на потребител';
@@ -80,23 +80,6 @@ const UserManagement: React.FC = () => {
           message.success('Имейлът с данните за вход е изпратен отново');
         } catch (error) {
           message.error('Неуспешно изпращане на данните за вход');
-        }
-      },
-    });
-  };
-
-  const handleResetPassword = async (userId: number) => {
-    Modal.confirm({
-      title: 'Нулирай парола',
-      content: 'Да изпратим ли линк за нулиране на паролата?',
-      okText: 'Да',
-      cancelText: 'Не',
-      onOk: async () => {
-        try {
-          await api.post(`/user-management/${userId}/reset_user_password/`);
-          message.success('Линкът за нулиране на парола е изпратен');
-        } catch (error) {
-          message.error('Неуспешно изпращане на линк за нулиране');
         }
       },
     });
@@ -172,14 +155,6 @@ const UserManagement: React.FC = () => {
           <Button
             type="link"
             size="small"
-            icon={<LockOutlined />}
-            onClick={() => handleResetPassword(record.id)}
-          >
-            Нулирай парола
-          </Button>
-          <Button
-            type="link"
-            size="small"
             danger
             icon={<DeleteOutlined />}
             onClick={() => handleDeleteUser(record.id, record.username)}
@@ -209,7 +184,7 @@ const UserManagement: React.FC = () => {
           >
             <Alert
               message="Създайте потребители и им изпратете данни за вход"
-              description="Новите потребители получават потребителско име, временна парола и линк за задаване на собствена парола."
+              description="Новите потребители получават временно потребителско име и временна парола в имейла, както и линк, с който могат да променят и двете."
               type="info"
               showIcon
               style={{ marginBottom: 16 }}
@@ -220,7 +195,9 @@ const UserManagement: React.FC = () => {
                 columns={columns}
                 dataSource={users}
                 rowKey="id"
-                pagination={{ pageSize: 10 }}
+                pagination={{ pageSize: 20 }}
+                scroll={{ x: 1200 }}
+                size="large"
               />
             </Spin>
           </Card>
@@ -243,19 +220,13 @@ const UserManagement: React.FC = () => {
           onFinish={handleCreateUser}
           autoComplete="off"
         >
-          <Form.Item
-            label="Потребителско име"
-            name="username"
-            rules={[
-              { required: true, message: 'Потребителското име е задължително' },
-              {
-                pattern: /^[a-zA-Z0-9_.-]+$/,
-                message: 'Позволени са букви, цифри, точка, долна черта и тире',
-              },
-            ]}
-          >
-            <Input placeholder="напр. ivan.ivanov" />
-          </Form.Item>
+          <Alert
+            message="Потребителското име ще бъде зададено от потребителя"
+            description="Не е необходимо да въвеждате потребителско име. Потребителят ще може да избере свое потребителско име и парола чрез линка в имейла."
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
 
           <Form.Item
             label="Имейл"

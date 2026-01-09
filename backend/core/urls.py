@@ -25,6 +25,7 @@ from .views.users import (
     reset_password_view,
     request_password_reset_view,
     validate_reset_token_view,
+    set_credentials_view,
     UserManagementViewSet
 )
 from .views.push import PushSubscribeView, PushUnsubscribeView
@@ -59,4 +60,5 @@ urlpatterns = [
     path('auth/reset-password/', reset_password_view, name='auth-reset-password'),
     path('auth/request-password-reset/', request_password_reset_view, name='auth-request-password-reset'),
     path('auth/validate-reset-token/', validate_reset_token_view, name='auth-validate-reset-token'),
+    path('auth/set-credentials/', set_credentials_view, name='auth-set-credentials'),
 ] + router.urls

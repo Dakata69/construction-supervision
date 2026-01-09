@@ -86,7 +86,7 @@ const ProjectList: React.FC = () => {
     <div style={{ padding: 24 }}>
       <Row gutter={[16,16]} align="middle" justify="space-between" style={{ marginBottom: 8 }}>
         <Col flex="none">
-          <h1 style={{ margin: 0 }}>Обекти <span style={{ color: '#888' }}>({projects.length})</span></h1>
+          <h1 style={{ margin: 0, fontSize: 24 }}>Обекти <span style={{ color: '#888' }}>({projects.length})</span></h1>
         </Col>
         <Col flex="auto">
           <Space style={{ width: '100%', justifyContent: 'flex-end' }} wrap>
@@ -96,12 +96,12 @@ const ProjectList: React.FC = () => {
               placeholder="Търси (име, локация, изпълнител)"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{ width: 260 }}
+              style={{ width: 300, maxWidth: '100%' }}
             />
             <Select
               value={statusFilter}
               onChange={v => setStatusFilter(v)}
-              style={{ width: 180 }}
+              style={{ width: 200, maxWidth: '100%' }}
               options={[{ label: 'Всички статуси', value: 'all' },
                 { label: 'Планиране', value: 'planning' },
                 { label: 'В процес', value: 'in_progress' },
@@ -126,30 +126,34 @@ const ProjectList: React.FC = () => {
         />
       )}
 
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col xs={12} sm={8} md={4}>
+      <Row gutter={[16,16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} md={12} lg={8} xl={6}>
           <Card size="small"><Statistic title="Планиране" value={counts.planning} /></Card>
         </Col>
-        <Col xs={12} sm={8} md={4}>
+        <Col xs={24} sm={12} md={12} lg={8} xl={6}>
           <Card size="small"><Statistic title="В процес" value={counts.in_progress} /></Card>
         </Col>
-        <Col xs={12} sm={8} md={4}>
+        <Col xs={24} sm={12} md={12} lg={8} xl={6}>
           <Card size="small"><Statistic title="На пауза" value={counts.on_hold} /></Card>
         </Col>
-        <Col xs={12} sm={8} md={4}>
+        <Col xs={24} sm={12} md={12} lg={8} xl={6}>
           <Card size="small"><Statistic title="Завършени" value={counts.completed} /></Card>
         </Col>
-        <Col xs={12} sm={8} md={4}>
+        <Col xs={24} sm={12} md={12} lg={8} xl={6}>
           <Card size="small"><Statistic title="Отменени" value={counts.cancelled} /></Card>
         </Col>
       </Row>
 
       {isLoading && (
-        <Row gutter={[16,16]}> {Array.from({ length: 6 }).map((_,i) => (
-          <Col key={i} xs={24} sm={12} md={8} lg={6}>
-            <Card><Skeleton active paragraph={{ rows: 3 }} /></Card>
-          </Col>
-        ))} </Row>
+        <Row gutter={[16,16]}>
+          {Array.from({ length: 6 }).map((_,i) => (
+            <Col key={i} xs={24} sm={12} md={12} lg={12} xl={8}>
+              <Card style={{ borderRadius: 8 }}>
+                <Skeleton active paragraph={{ rows: 3 }} />
+              </Card>
+            </Col>
+          ))}
+        </Row>
       )}
 
       {!isLoading && filtered.length === 0 && (
@@ -159,17 +163,17 @@ const ProjectList: React.FC = () => {
       {!isLoading && filtered.length > 0 && (
         <Row gutter={[16,16]}>
           {filtered.map(p => (
-            <Col key={p.id} xs={24} sm={12} md={8} lg={6}>
+            <Col key={p.id} xs={24} sm={12} md={12} lg={12} xl={8}>
               <Card
                 hoverable
-                size="small"
-                title={<div style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.25 }}>{p.name}</div>}
+                style={{ borderRadius: 8, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}
+                title={<div style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.25, fontWeight: 600, fontSize: 16 }}>{p.name}</div>}
                 extra={<Tag color={statusColors[p.status]}>{statusLabels[p.status]}</Tag>}
                 actions={[
                   <FolderOpenOutlined key="open" onClick={() => navigate(`/projects/${p.id}`)} />,
                 ]}
               >
-                <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                <Space direction="vertical" size={4} style={{ width: '100%' }}>
                   <div><strong>Локация:</strong> {p.location || '—'}</div>
                   <div><strong>Изпълнител:</strong> {p.contractor || '—'}</div>
                   <div style={{ fontSize: 12, color: '#888' }}>

@@ -95,9 +95,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# DATABASES configuration is above (lines 30-48)
-# Using MySQL if DATABASE_URL is not set
-
 AUTH_PASSWORD_VALIDATORS = []
 
 LANGUAGE_CODE = 'en-us'
@@ -130,27 +127,22 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Email configuration
 # EMAIL_BACKEND determines how emails are sent:
-#   - 'django.core.mail.backends.console.EmailBackend' (default in development)
-#     Emails are printed to console instead of being sent. Check console/terminal output.
+#   - 'django.core.mail.backends.console.EmailBackend' (development only)
+#     Emails are printed to console/terminal. Check terminal output for reset links.
 #   - 'django.core.mail.backends.smtp.EmailBackend' (production)
 #     Sends emails via SMTP server. Configure EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD.
 #
-# To receive actual emails in development, set in .env:
-#   EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-#   EMAIL_HOST=smtp.gmail.com (or your SMTP server)
-#   EMAIL_PORT=587
-#   EMAIL_USE_TLS=True
-#   EMAIL_HOST_USER=your-email@gmail.com
-#   EMAIL_HOST_PASSWORD=your-app-password (for Gmail, use 16-char app password)
+# For development: use console backend (emails appear in terminal)
+# For production: set in .env and use SMTP backend
 #
-EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@construction-supervision.bg')
-SERVER_EMAIL = os.environ.get('SERVER_EMAIL', 'server@construction-supervision.bg')
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'danieldukov2002@gmail.com'
+EMAIL_HOST_PASSWORD = 'noeonquznfzqugae'
+DEFAULT_FROM_EMAIL = 'Construction Supervision <danieldukov2002@gmail.com>'
+SERVER_EMAIL = 'danieldukov2002@gmail.com'
 
 # Frontend URL for password reset links
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')

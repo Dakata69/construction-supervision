@@ -22,6 +22,7 @@ import Analytics from './pages/Analytics';
 import BudgetTracking from './pages/BudgetTracking';
 import WeatherLogging from './pages/WeatherLogging';
 import PasswordReset from './pages/PasswordReset';
+import SetupCredentials from './pages/SetupCredentials';
 import UserManagement from './pages/UserManagement';
 import Admin from './pages/Admin';
 import Header from './components/Header';
@@ -192,6 +193,10 @@ export default function App() {
                     <Route 
                       path="/password-reset/:token" 
                       element={<PasswordReset />} 
+                    />
+                    <Route 
+                      path="/setup-credentials/:token" 
+                      element={<SetupCredentials />} 
                     />
                   </Routes>
                 </Content>

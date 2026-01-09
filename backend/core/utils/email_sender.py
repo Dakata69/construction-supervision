@@ -1,18 +1,22 @@
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.html import strip_tags
+import logging
+
+logger = logging.getLogger('core')
 
 
-def send_credentials_email(user, temporary_password):
+def send_credentials_email(user, temporary_password, reset_token=None):
     """Send credentials email with username and temporary password"""
     subject = 'Construction Supervision - Вашия профил е създаден'
     
     context = {
-        'first_name': user.first_name or 'User',
+        'first_name': user.first_name or '',
         'username': user.username,
         'email': user.email,
         'temporary_password': temporary_password,
         'frontend_url': settings.FRONTEND_URL,
+        'setup_url': f"{settings.FRONTEND_URL}/setup-credentials/{reset_token.token}" if reset_token else None,
     }
     
     html_message = f"""
@@ -39,9 +43,9 @@ def send_credentials_email(user, temporary_password):
             </div>
             
             <div class="content">
-                <p>Добър ден <strong>{context['first_name']}</strong>,</p>
+                <p>Добър ден <strong>{context['first_name'] or user.get_full_name() or user.email}</strong>,</p>
                 
-                <p>От фирма Construction Supervision е създаден вашия профил. По-долу намирате вашите данни за вход:</p>
+                <p>От фирма Construction Supervision е създаден вашия профил. По-долу се намират вашите данни за вход:</p>
                 
                 <div class="credentials">
                     <div class="credentials-row">
@@ -52,10 +56,10 @@ def send_credentials_email(user, temporary_password):
                     </div>
                 </div>
                 
-                <p>Използвайте горните данни, за да се впишете в системата:</p>
+                <p>Използвайте горните данни, за да се впишете в системата или директно задайте вашите нови потребителско име и парола от линка по-долу:</p>
                 
                 <center>
-                    <a href="{context['frontend_url']}/login" class="button">Отворете систематата</a>
+                    <a href="{context['setup_url'] if context['setup_url'] else context['frontend_url'] + '/login'}" class="button">{ 'Задаване на потребителско име и парола' if context['setup_url'] else 'Отворете системата' }</a>
                 </center>
                 
                 <p style="color: #999; font-size: 13px;">
@@ -65,7 +69,7 @@ def send_credentials_email(user, temporary_password):
             
             <div class="footer">
                 <p>© Construction Supervision Team. Всички права запазени.</p>
-                <p>Това е автоматично генериран имейл. Моля не отговарайте.</p>
+                <p>Това е автоматично генериран имейл. Моля, не отговаряйте.</p>
             </div>
         </div>
     </body>
@@ -74,7 +78,8 @@ def send_credentials_email(user, temporary_password):
     
     plain_message = strip_tags(html_message)
     
-    send_mail(
+    logger.info("Sending credentials email to %s (setup_url=%s)", user.email, context.get('setup_url'))
+    sent = send_mail(
         subject,
         plain_message,
         settings.DEFAULT_FROM_EMAIL,
@@ -82,74 +87,82 @@ def send_credentials_email(user, temporary_password):
         html_message=html_message,
         fail_silently=False,
     )
+    logger.info("Credentials email send result: %s (1 means success)", sent)
 
 
 def send_password_reset_email(user, reset_token):
     """Send password reset email with token link"""
-    subject = 'Construction Supervision - Възстановяване на парола'
-    
-    reset_url = f"{settings.FRONTEND_URL}/password-reset/{reset_token.token}"
-    
-    context = {
-        'first_name': user.first_name or 'User',
-        'reset_url': reset_url,
-        'expires_hours': 24,
-    }
-    
-    html_message = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <style>
-            body {{ font-family: Arial, sans-serif; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 4px; text-align: center; }}
-            .content {{ padding: 20px; background: #f9f9f9; }}
-            .button {{ display: inline-block; background: #1890ff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin: 15px 0; }}
-            .footer {{ text-align: center; color: #999; font-size: 12px; margin-top: 20px; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>Construction Supervision</h1>
+    try:
+        subject = 'Construction Supervision - Възстановяване на парола'
+        
+        reset_url = f"{settings.FRONTEND_URL}/password-reset/{reset_token.token}"
+        
+        context = {
+            'first_name': user.first_name or 'User',
+            'reset_url': reset_url,
+            'expires_hours': 24,
+        }
+        
+        html_message = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 4px; text-align: center; }}
+                .content {{ padding: 20px; background: #f9f9f9; }}
+                .button {{ display: inline-block; background: #1890ff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin: 15px 0; }}
+                .footer {{ text-align: center; color: #999; font-size: 12px; margin-top: 20px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Construction Supervision</h1>
+                </div>
+                
+                <div class="content">
+                    <p>Добър ден <strong>{context['first_name']}</strong>,</p>
+                    <p>Получихме запитване за възстановяване на вашата парола. Щракнете на връзката по-долу, за да зададете нова парола:</p>
+                    
+                    <center>
+                        <a href="{context['reset_url']}" class="button">Възстановяване на парола</a>
+                    </center>
+                    
+                    <p>Или копирайте и вставете тази връзка в браузъра си:</p>
+                    <p style="word-break: break-all; font-size: 12px; color: #666;">{context['reset_url']}</p>
+                    
+                    <p style="color: #999; font-size: 13px;">
+                        Тази връзка ще бъде валидна {context['expires_hours']} часа.
+                    </p>
+                    
+                    <p>Ако не сте поискали възстановяване на парола, моля игнорирайте този имейл.</p>
+                </div>
+                
+                <div class="footer">
+                    <p>© Construction Supervision Team. Всички права запазени.</p>
+                    <p>Това е автоматично генериран имейл. Моля не отговарайте.</p>
+                </div>
             </div>
-            
-            <div class="content">
-                <p>Добър ден <strong>{context['first_name']}</strong>,</p>
-                <p>Получихме запитване за възстановяване на вашата парола. Щракнете на връзката по-долу, за да зададете нова парола:</p>
-                
-                <center>
-                    <a href="{context['reset_url']}" class="button">Възстановяване на парола</a>
-                </center>
-                
-                <p>Или копирайте и вставете тази връзка в браузъра си:</p>
-                <p style="word-break: break-all; font-size: 12px; color: #666;">{context['reset_url']}</p>
-                
-                <p style="color: #999; font-size: 13px;">
-                    Тази връзка ще бъде валидна {context['expires_hours']} часа.
-                </p>
-                
-                <p>Ако не сте поискали възстановяване на парола, моля игнорирайте този имейл.</p>
-            </div>
-            
-            <div class="footer">
-                <p>© Construction Supervision Team. Всички права запазени.</p>
-                <p>Това е автоматично генериран имейл. Моля не отговарайте.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    
-    plain_message = strip_tags(html_message)
-    
-    send_mail(
-        subject,
-        plain_message,
-        settings.DEFAULT_FROM_EMAIL,
-        [user.email],
-        html_message=html_message,
-        fail_silently=False,
-    )
+        </body>
+        </html>
+        """
+        
+        plain_message = strip_tags(html_message)
+        
+        logger.info("Sending password reset email to %s (reset_url=%s)", user.email, reset_url)
+        sent = send_mail(
+            subject,
+            plain_message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        logger.info("Password reset email send result: %s (1 means success)", sent)
+        return sent
+    except Exception as e:
+        logger.error("Error sending password reset email to %s: %s", user.email, str(e), exc_info=True)
+        raise

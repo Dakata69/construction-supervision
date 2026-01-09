@@ -1,5 +1,5 @@
 // frontend/src/pages/Login.tsx
-import { Form, Input, Button, Card, Typography, message, Space } from 'antd';
+import { Form, Input, Button, Card, Typography, message, Space, Modal } from 'antd';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../store/store';
 import { UserOutlined, LockOutlined, LoginOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
@@ -147,9 +147,12 @@ const InfoBox = styled.div`
 export default function Login() {
     const backgroundEnabled = useSelector((state: RootState) => state.ui.backgroundEnabled);
   const [form] = Form.useForm();
+  const [forgotPasswordForm] = Form.useForm();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [forgotPasswordVisible, setForgotPasswordVisible] = useState(false);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
 
   const onFinish = async (values: any) => {
     setLoading(true);
@@ -205,6 +208,26 @@ export default function Login() {
         });
       }
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (values: any) => {
+    setForgotPasswordLoading(true);
+    try {
+      await api.post('/auth/request-password-reset/', { email: values.email });
+      message.success({
+        content: 'Линкът за възстановяване на парола е изпратен по имейл',
+        duration: 3,
+      });
+      setForgotPasswordVisible(false);
+      forgotPasswordForm.resetFields();
+    } catch (error: any) {
+      message.error({
+        content: error.response?.data?.message || 'Грешка при изпращане. Проверете имейла и опитайте отново.',
+        duration: 3,
+      });
+    } finally {
+      setForgotPasswordLoading(false);
     }
   };
 
@@ -276,7 +299,7 @@ export default function Login() {
               />
             </Form.Item>
 
-            <Form.Item style={{ marginBottom: 0 }}>
+            <Form.Item style={{ marginBottom: 16 }}>
               <StyledButton
                 type="primary"
                 htmlType="submit"
@@ -286,6 +309,16 @@ export default function Login() {
                 {loading ? 'Влизане...' : 'Вход'}
               </StyledButton>
             </Form.Item>
+
+            <Form.Item style={{ marginBottom: 0, textAlign: 'center' }}>
+              <Button 
+                type="link" 
+                onClick={() => setForgotPasswordVisible(true)}
+                style={{ color: '#667eea' }}
+              >
+                Забравена парола?
+              </Button>
+            </Form.Item>
           </StyledForm>
 
           <div style={{ textAlign: 'center', padding: '0 32px 24px', marginTop: 16 }}>
@@ -293,6 +326,55 @@ export default function Login() {
               Ако имате проблеми с влизането, свържете се с администратор
             </Text>
           </div>
+
+          <Modal
+            title="Възстановяване на парола"
+            open={forgotPasswordVisible}
+            onCancel={() => {
+              setForgotPasswordVisible(false);
+              forgotPasswordForm.resetFields();
+            }}
+            footer={[
+              <Button key="cancel" onClick={() => {
+                setForgotPasswordVisible(false);
+                forgotPasswordForm.resetFields();
+              }}>
+                Отказ
+              </Button>,
+              <Button 
+                key="submit" 
+                type="primary" 
+                loading={forgotPasswordLoading}
+                onClick={() => forgotPasswordForm.submit()}
+              >
+                Изпрати
+              </Button>,
+            ]}
+          >
+            <Form 
+              form={forgotPasswordForm} 
+              layout="vertical" 
+              onFinish={handleForgotPassword}
+              style={{ marginTop: 24 }}
+            >
+              <Form.Item
+                label="Имейл"
+                name="email"
+                rules={[
+                  { required: true, message: 'Имейлът е задължителен' },
+                  { type: 'email', message: 'Въведете валиден имейл' },
+                ]}
+              >
+                <Input 
+                  placeholder="user@example.com"
+                  prefix={<LockOutlined />}
+                />
+              </Form.Item>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                Линкът за възстановяване на парола ще бъде изпратен по указания имейл адрес.
+              </Text>
+            </Form>
+          </Modal>
         </Card>
       </StyledCard>
     </LoginContainer>

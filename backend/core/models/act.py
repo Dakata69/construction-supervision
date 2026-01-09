@@ -94,6 +94,14 @@ class Act(models.Model):
             'signature_supervision': '........................',
             'signature_designer': '........................',
         }
+
+        # Fallback/alias placeholders used in Act templates
+        context.setdefault('consultant_name', getattr(self.project, 'consultant_name', '') or self.representative_supervision)
+        context.setdefault('designer_name', self.representative_designer or getattr(self.project, 'designer_name', ''))
+        context.setdefault('project_location', getattr(self.project, 'location', '') or context.get('project_location', ''))
+        if not context.get('client_name') and getattr(self.project, 'client', None):
+            client = self.project.client
+            context['client_name'] = getattr(client, 'get_full_name', lambda: '')() or getattr(client, 'username', '')
         
         if self.act_type == 'act7':
             context.update({
@@ -108,6 +116,14 @@ class Act(models.Model):
                 'referenced_acts': self.referenced_acts,
                 'quality_protocols': self.quality_protocols,
                 'conclusion_text': self.conclusion_text,
+                # Template placeholders fallbacks
+                'tech_supervisor_name': getattr(self.project, 'supervisor_name_text', ''),
+                'additional_documents': self.quality_protocols or self.referenced_acts or '',
+                'defects_description': self.conclusion_text,
+                'designer_signature': context.get('designer_name', ''),
+                'contractor_signature': context.get('contractor_name', ''),
+                'supervisor_signature': context.get('representative_supervision', ''),
+                'consultant_footer': context.get('consultant_name', ''),
             })
         elif self.act_type == 'act15':
             context.update({
@@ -118,6 +134,43 @@ class Act(models.Model):
                 'findings_execution': self.findings_execution,
                 'findings_site': self.findings_site,
                 'decision_text': self.decision_text,
+                # Act 15 template placeholders (best-effort mapping)
+                'consultant_name': context.get('consultant_name', context.get('representative_supervision', '')),
+                'designer_name': context.get('designer_name', ''),
+                'client_representative': '',
+                'designer_company': '',
+                'designer_representative': '',
+                'contractor_representative': context.get('representative_builder', ''),
+                'contractor_part1': '',
+                'contractor_part2': '',
+                'permit_number': '',
+                'permit_date': '',
+                'permit_issuer': '',
+                'municipality': '',
+                'legalization_number': '',
+                'legalization_date': '',
+                'legalization_municipality': '',
+                'approval_date': '',
+                'approval_authority': '',
+                'approved_projects': self.referenced_documents,
+                'construction_contracts': self.referenced_documents,
+                'documentation_findings': self.findings_permits,
+                'execution_findings': self.findings_execution,
+                'site_condition': self.findings_site,
+                'surrounding_condition': self.findings_site,
+                'defect_removal_start': self.act_date.strftime('%d.%m.%Y'),
+                'defect_description': self.decision_text,
+                'defect_removal_deadline': '',
+                'temporary_removal_deadline': '',
+                'temporary_removal_location': '',
+                'attached_documents_a': '',
+                'attached_documents_b': '',
+                'authorized_representative': '',
+                'handover_notes': '',
+                'client_signature': context.get('client_name', ''),
+                'designer_signature': context.get('designer_name', ''),
+                'contractor_signature': context.get('contractor_name', ''),
+                'consultant_signature': context.get('consultant_name', ''),
             })
         
         return context
