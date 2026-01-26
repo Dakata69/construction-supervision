@@ -440,27 +440,27 @@ const BudgetTracking: React.FC<BudgetTrackingProps> = ({ projectId }) => {
         confirmLoading={budget ? updateBudget.isPending : createBudget.isPending}
       >
         <Form form={budgetForm} layout="vertical" onFinish={handleCreateBudget}>
-          <Form.Item
-            label="Планиран бюджет"
-            name="initial_budget"
-            rules={[{ required: true, message: 'Моля, въведете бюджет' }]}
-          >
-            <Form.Item noStyle shouldUpdate={(prev, curr) => prev.currency !== curr.currency}>
-              {({ getFieldValue }) => (
+          <Form.Item label="Валута" name="currency" initialValue="BGN">
+            <Select>
+              <Select.Option value="BGN">BGN (лв.)</Select.Option>
+              <Select.Option value="EUR">EUR (€)</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, curr) => prev.currency !== curr.currency}>
+            {({ getFieldValue }) => (
+              <Form.Item
+                label="Планиран бюджет"
+                name="initial_budget"
+                rules={[{ required: true, message: 'Моля, въведете бюджет' }]}
+              >
                 <InputNumber
                   style={{ width: '100%' }}
                   min={0}
                   precision={2}
                   addonAfter={getCurrencySymbol(getFieldValue('currency') || 'BGN')}
                 />
-              )}
-            </Form.Item>
-          </Form.Item>
-          <Form.Item label="Валута" name="currency" initialValue="BGN">
-            <Select>
-              <Select.Option value="BGN">BGN (лв.)</Select.Option>
-              <Select.Option value="EUR">EUR (€)</Select.Option>
-            </Select>
+              </Form.Item>
+            )}
           </Form.Item>
           <Form.Item label="Бележки" name="notes">
             <Input.TextArea rows={3} />

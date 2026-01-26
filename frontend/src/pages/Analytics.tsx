@@ -94,6 +94,12 @@ const Analytics: React.FC = () => {
 
   const expenseColumns = [
     {
+      title: 'Проект',
+      dataIndex: 'project',
+      key: 'project',
+      ellipsis: true,
+    },
+    {
       title: 'Категория',
       dataIndex: 'category',
       key: 'category',
@@ -106,11 +112,11 @@ const Analytics: React.FC = () => {
       render: (total: number) => formatDualCurrency(total, currency),
     },
     {
-      title: 'Процент',
-      width: 220,
+      title: 'Процент от общ бюджет',
+      width: 240,
       key: 'percentage',
       render: (_: any, record: any) => {
-        // Calculate category percentage relative to total budget (not total spent)
+        // Calculate category percentage relative to total budget across all projects
         const denominator = data.budget.total_budget;
         const percentage = denominator > 0
           ? (record.total / denominator) * 100
@@ -122,7 +128,7 @@ const Analytics: React.FC = () => {
             <Progress
               percent={rounded}
               size="small"
-              style={{ flex: 1, minWidth: 140, marginBottom: 0 }}
+              style={{ flex: 1, minWidth: 120, marginBottom: 0 }}
               status={percentage > 90 ? 'exception' : percentage > 60 ? 'normal' : 'success'}
               strokeColor={percentage > 90 ? '#cf1322' : percentage > 60 ? '#faad14' : '#52c41a'}
             />
@@ -187,7 +193,7 @@ const Analytics: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Бюджет"
+              title="Общо изразходвано (всички проекти)"
               value={formatDualCurrency(data.budget.total_spent, currency)}
               prefix={<DollarOutlined />}
             />
@@ -231,11 +237,11 @@ const Analytics: React.FC = () => {
         </Col>
 
         <Col xs={24} lg={12}>
-          <Card title="Топ категории разходи">
+          <Card title="Топ разходи по проект и категория">
             <Table
               dataSource={data.top_expense_categories}
               columns={expenseColumns}
-              rowKey="category"
+              rowKey={(record: any) => `${record.project}-${record.category}`}
               pagination={false}
               size="small"
             />

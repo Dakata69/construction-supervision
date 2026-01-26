@@ -246,6 +246,13 @@ export default function Documents() {
     setTick(t => t + 1);
   }
 
+  function clearProjectForms() {
+    form7.resetFields();
+    form14.resetFields();
+    form15.resetFields();
+    setTick(t => t + 1);
+  }
+
   // Auto-generate when redirected with ?auto=act7|act14|act15
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -442,24 +449,35 @@ export default function Documents() {
         <Card bordered>
           <Space direction="vertical" style={{ width: '100%' }}>
             <strong>Изберете обект за авто-попълване</strong>
-            <Select
-              placeholder="Избор на обект"
-              loading={projectsLoading}
-              value={selectedProjectId ?? undefined}
-              onChange={(id: number) => {
-                setSelectedProjectId(id);
-                const p = projects.find((x: any) => x.id === id);
-                applyProjectToForms(p);
-                try { localStorage.setItem('selected_project_id', String(id)); } catch(e) { /* ignore */ }
-              }}
-              options={projects.map((p: any) => ({
-                label: `${p.name}${p.location ? ' — ' + p.location : ''}`,
-                value: p.id,
-              }))}
-              showSearch
-              optionFilterProp="label"
-              style={{ maxWidth: 500 }}
-            />
+            <Space style={{ width: '100%' }}>
+              <Select
+                placeholder="Избор на обект"
+                loading={projectsLoading}
+                value={selectedProjectId ?? undefined}
+                onChange={(id: number) => {
+                  setSelectedProjectId(id);
+                  const p = projects.find((x: any) => x.id === id);
+                  applyProjectToForms(p);
+                  try { localStorage.setItem('selected_project_id', String(id)); } catch(e) { /* ignore */ }
+                }}
+                options={projects.map((p: any) => ({
+                  label: `${p.name}${p.location ? ' — ' + p.location : ''}`,
+                  value: p.id,
+                }))}
+                showSearch
+                optionFilterProp="label"
+                style={{ maxWidth: 500 }}
+              />
+              <Button
+                onClick={() => {
+                  setSelectedProjectId(null);
+                  clearProjectForms();
+                  try { localStorage.removeItem('selected_project_id'); } catch(e) { /* ignore */ }
+                }}
+              >
+                Изчисти
+              </Button>
+            </Space>
           </Space>
         </Card>
         <Row gutter={[16, 16]} className={'act-cards'}>

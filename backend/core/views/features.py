@@ -264,21 +264,30 @@ def analytics_dashboard_view(request):
         'id', 'name', 'created_at', 'end_date'
     )
     
-    # Top expense categories
-    # Compute top categories with conversion to BGN
-    cat_total_map = {}
-    for e in BudgetExpense.objects.all():
+    # Top expense categories by project
+    # Group expenses by project and category
+    project_expenses = {}
+    for e in BudgetExpense.objects.select_related('budget__project').all():
         amt = Decimal(e.amount)
         amt_bgn = (amt * rate) if e.expense_currency == 'EUR' else amt
-        cat_total_map[e.category] = cat_total_map.get(e.category, Decimal('0')) + amt_bgn
+        project_name = e.budget.project.name
+        key = (project_name, e.category)
+        if key not in project_expenses:
+            project_expenses[key] = {
+                'project': project_name,
+                'category': e.category,
+                'total': Decimal('0')
+            }
+        project_expenses[key]['total'] += amt_bgn
+    
     top_categories = sorted(
         (
-            {'category': k, 'total': float(v)}
-            for k, v in cat_total_map.items()
+            {'project': v['project'], 'category': v['category'], 'total': float(v['total'])}
+            for v in project_expenses.values()
         ),
         key=lambda x: x['total'],
         reverse=True
-    )[:5]
+    )[:10]
     
     return Response({
         'projects': {

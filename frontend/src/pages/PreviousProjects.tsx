@@ -80,7 +80,7 @@ const PreviousProjects = () => {
   // Check if user is authenticated
   const isAuthenticated = !!localStorage.getItem('auth_token');
   
-  // Only non-privileged users can add/delete projects
+  // Only admins can add/delete projects (canEdit should be true for admins)
   const canModifyProjects = isAuthenticated && canEdit;
 
   const showModal = () => {

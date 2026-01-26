@@ -182,7 +182,6 @@ const UserManagement: React.FC = () => {
           >
             <Alert
               message="Създайте потребители и им изпратете данни за вход"
-              description="Новите потребители получават временна парола в имейла и линк, чрез който задават собствено потребителско име и нова парола."
               type="info"
               showIcon
               style={{ marginBottom: 16 }}
@@ -261,7 +260,7 @@ const UserManagement: React.FC = () => {
           >
             <Select>
               <Select.Option value="privileged">
-                Привилегирован (може да редактира)
+                Привилегирован
               </Select.Option>
               <Select.Option value="admin">Админ</Select.Option>
             </Select>

@@ -293,14 +293,13 @@ export default function Header() {
             Начало
           </NavLink>
           
+          <NavLink to="/previous-projects" $isActive={location.pathname === '/previous-projects'}>
+            <ProjectOutlined />
+            Завършени проекти
+          </NavLink>
+          
           {isAuthenticated ? (
             <>
-              {authInitialized && canEdit && (
-                <NavLink to="/previous-projects" $isActive={location.pathname === '/previous-projects'}>
-                  <ProjectOutlined />
-                  Завършени проекти
-                </NavLink>
-              )}
               <NavLink to="/projects" $isActive={location.pathname.startsWith('/projects')}>
                 <ProjectOutlined />
                 Обекти
@@ -375,7 +374,7 @@ export default function Header() {
               </Button>
             </Dropdown>
           )}
-          {isAuthenticated && pushSupported && (
+          {isAuthenticated && pushSupported && canEdit && (
             <Tooltip title={pushEnabled ? 'Изключи push' : 'Включи push'}>
               <Button
                 size="small"

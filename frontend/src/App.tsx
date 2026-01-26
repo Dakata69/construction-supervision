@@ -112,11 +112,7 @@ export default function App() {
                     <Route path="/login" element={<Login />} />
                     <Route 
                       path="/previous-projects" 
-                      element={
-                        <RoleProtectedRoute requireEdit={true}>
-                          <PreviousProjects />
-                        </RoleProtectedRoute>
-                      } 
+                      element={<PreviousProjects />}
                     />
                     <Route 
                       path="/projects" 

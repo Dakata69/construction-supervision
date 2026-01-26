@@ -1,8 +1,4 @@
 # Start both backend (Django) and frontend (Vite) locally
-# - Frees ports 8000 and 5173 if occupied
-# - Starts Django in a new minimized window
-# - Starts Vite in a new window pinned to port 5173
-# - Opens browser to the frontend
 
 $ErrorActionPreference = 'Continue'
 

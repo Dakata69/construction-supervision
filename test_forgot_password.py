@@ -2,13 +2,23 @@
 """
 Test script for forgot password flow
 """
+# pyright: reportMissingImports=false
 import os
 import sys
+from pathlib import Path
 import django
 
-# Setup Django
+# Setup Django paths so core.* resolves when running directly
+BASE_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = BASE_DIR / 'backend'
+
+# Ensure both backend/ and project root are on sys.path
+for p in (BACKEND_DIR, BASE_DIR):
+    p_str = str(p)
+    if p_str not in sys.path:
+        sys.path.insert(0, p_str)
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 django.setup()
 
 from django.contrib.auth.models import User
